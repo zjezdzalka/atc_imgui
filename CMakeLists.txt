@@ -1,13 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
-project(atc_opengl VERSION 0.0.1)
+project(atc_imgui VERSION 0.0.1)
 
-find_package(glfw3 3.3 REQUIRED)
-add_subdirectory(glad)
-
-add_executable(tutorial main.cpp)
+add_executable(atc_imgui main.cpp)
 target_link_libraries(
-        tutorial PUBLIC
-        glfw
-        glad
-        dl
+        atc_imgui PUBLIC
 )
