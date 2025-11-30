@@ -3,25 +3,229 @@
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
-  <component name="CMakePresetLoader"><![CDATA[{
-  "useNewFormat": true
-}]]></component>
+  <component name="BackendCodeEditorMiscSettings">
+    <option name="/Default/Environment/Hierarchy/GeneratedFilesCacheKey/Timestamp/@EntryValue" value="10" type="long" />
+    <option name="/Default/Housekeeping/FeatureSuggestion/FeatureSuggestionManager/DisabledSuggesters/=SwitchToGoToActionSuggester/@EntryIndexedValue" value="true" type="bool" />
+    <option name="/Default/Housekeeping/GlobalSettingsUpgraded/IsUpgraded/@EntryValue" value="true" type="bool" />
+    <option name="/Default/RiderDebugger/RiderRestoreDecompile/RestoreDecompileSetting/@EntryValue" value="false" type="bool" />
+  </component>
+  <component name="CMakePresetLoader">{
+  &quot;useNewFormat&quot;: true
+}</component>
+  <component name="CMakeProjectFlavorService">
+    <option name="flavorId" value="CMakePlainProjectFlavor" />
+  </component>
+  <component name="CMakeReloadState">
+    <option name="reloaded" value="true" />
+  </component>
   <component name="CMakeRunConfigurationManager">
     <generated>
-      <config projectName="atc_opengl" targetName="tutorial" />
-      <config projectName="atc_opengl" targetName="glad" />
+      <config projectName="imgui_radar" targetName="glfw" />
+      <config projectName="imgui_radar" targetName="update_mappings" />
+      <config projectName="imgui_radar" targetName="uninstall" />
+      <config projectName="imgui_radar" targetName="docs" />
+      <config projectName="imgui_radar" targetName="imgui_build" />
+      <config projectName="imgui_radar" targetName="imgui_radar" />
     </generated>
   </component>
-  <component name="CMakeSettings">
+  <component name="CMakeSettings" AUTO_RELOAD="true">
     <configurations>
       <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
+      <configuration PROFILE_NAME="x64-debug" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/out/build/x64-debug" />
+      <configuration PROFILE_NAME="x64-release" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/out/build/x64-release" />
+      <configuration PROFILE_NAME="x86-debug" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/out/build/x86-debug" />
+      <configuration PROFILE_NAME="x86-release" ENABLED="false" FROM_PRESET="true" GENERATION_DIR="$PROJECT_DIR$/out/build/x86-release" />
     </configurations>
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="8ebbb9c3-535f-4b7a-b96c-c8e2dc2e5500" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.name" beforeDir="false" />
+    <list default="true" id="dfdadbc9-1d37-46f4-ac08-649ef4e3bb35" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/atc_opengl.iml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/editor.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/editor.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/CMakeLists.txt" beforeDir="false" afterPath="$PROJECT_DIR$/CMakeLists.txt" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/LICENSE" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/glfw/tests/clipboard.c" beforeDir="false" afterPath="$PROJECT_DIR$/external/glfw/tests/clipboard.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/glfw/tests/cursor.c" beforeDir="false" afterPath="$PROJECT_DIR$/external/glfw/tests/cursor.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/glfw/tests/empty.c" beforeDir="false" afterPath="$PROJECT_DIR$/external/glfw/tests/empty.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/glfw/tests/gamma.c" beforeDir="false" afterPath="$PROJECT_DIR$/external/glfw/tests/gamma.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/glfw/tests/joysticks.c" beforeDir="false" afterPath="$PROJECT_DIR$/external/glfw/tests/joysticks.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/glfw/tests/monitors.c" beforeDir="false" afterPath="$PROJECT_DIR$/external/glfw/tests/monitors.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/glfw/tests/timeout.c" beforeDir="false" afterPath="$PROJECT_DIR$/external/glfw/tests/timeout.c" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/README.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_allegro5/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_allegro5/example_allegro5.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_allegro5/example_allegro5.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_allegro5/imconfig_allegro5.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_allegro5/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_android_opengl3/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_android_opengl3/android/.gitignore" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_android_opengl3/android/app/build.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_android_opengl3/android/app/src/main/AndroidManifest.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_android_opengl3/android/app/src/main/java/MainActivity.kt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_android_opengl3/android/build.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_android_opengl3/android/gradle/libs.versions.toml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_android_opengl3/android/settings.gradle" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_android_opengl3/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_metal/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_metal/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_metal/example_apple_metal.xcodeproj/project.pbxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_metal/iOS/Info-iOS.plist" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_metal/iOS/LaunchScreen.storyboard" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_metal/macOS/Info-macOS.plist" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_metal/macOS/MainMenu.storyboard" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_metal/main.mm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_opengl2/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_opengl2/example_apple_opengl2.xcodeproj/project.pbxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_apple_opengl2/main.mm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_metal/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_metal/main.mm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl2/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl2/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl2/example_glfw_opengl2.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl2/example_glfw_opengl2.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl2/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl3/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl3/Makefile.emscripten" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl3/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl3/example_glfw_opengl3.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl3/example_glfw_opengl3.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_opengl3/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_vulkan/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_vulkan/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_vulkan/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_vulkan/build_win64.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_vulkan/example_glfw_vulkan.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_vulkan/example_glfw_vulkan.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_vulkan/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_wgpu/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_wgpu/Makefile.emscripten" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_wgpu/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glfw_wgpu/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glut_opengl2/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glut_opengl2/example_glut_opengl2.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glut_opengl2/example_glut_opengl2.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_glut_opengl2/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_null/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_null/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_null/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_directx11/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_directx11/example_sdl2_directx11.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_directx11/example_sdl2_directx11.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_directx11/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_metal/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_metal/main.mm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl2/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl2/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl2/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl2/example_sdl2_opengl2.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl2/example_sdl2_opengl2.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl2/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl3/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl3/Makefile.emscripten" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl3/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl3/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl3/example_sdl2_opengl3.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl3/example_sdl2_opengl3.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_opengl3/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_sdlrenderer2/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_sdlrenderer2/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_sdlrenderer2/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_sdlrenderer2/example_sdl2_sdlrenderer2.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_sdlrenderer2/example_sdl2_sdlrenderer2.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_sdlrenderer2/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_vulkan/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_vulkan/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_vulkan/build_win64.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_vulkan/example_sdl2_vulkan.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_vulkan/example_sdl2_vulkan.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_vulkan/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_wgpu/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_wgpu/Makefile.emscripten" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_wgpu/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl2_wgpu/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_directx11/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_directx11/example_sdl3_directx11.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_directx11/example_sdl3_directx11.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_directx11/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_metal/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_metal/main.mm" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_opengl3/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_opengl3/Makefile.emscripten" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_opengl3/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_opengl3/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_opengl3/build_win64.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_opengl3/example_sdl3_opengl3.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_opengl3/example_sdl3_opengl3.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_opengl3/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlgpu3/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlgpu3/build_win64.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlgpu3/example_sdl3_sdlgpu3.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlgpu3/example_sdl3_sdlgpu3.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlgpu3/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlrenderer3/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlrenderer3/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlrenderer3/example_sdl3_sdlrenderer3.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlrenderer3/example_sdl3_sdlrenderer3.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_sdlrenderer3/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_vulkan/Makefile" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_vulkan/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_vulkan/build_win64.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_vulkan/example_sdl3_vulkan.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_vulkan/example_sdl3_vulkan.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_vulkan/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_wgpu/CMakeLists.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_wgpu/Makefile.emscripten" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_wgpu/README.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_sdl3_wgpu/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx10/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx10/example_win32_directx10.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx10/example_win32_directx10.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx10/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx11/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx11/example_win32_directx11.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx11/example_win32_directx11.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx11/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx12/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx12/example_win32_directx12.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx12/example_win32_directx12.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx12/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx9/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx9/example_win32_directx9.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx9/example_win32_directx9.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_directx9/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_opengl3/build_mingw.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_opengl3/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_opengl3/example_win32_opengl3.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_opengl3/example_win32_opengl3.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_opengl3/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_vulkan/build_win32.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_vulkan/build_win64.bat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_vulkan/example_win32_vulkan.vcxproj" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_vulkan/example_win32_vulkan.vcxproj.filters" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/example_win32_vulkan/main.cpp" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/imgui_examples.sln" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/emscripten/emscripten_mainloop_stub.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/emscripten/shell_minimal.html" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/glfw/COPYING.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/glfw/include/GLFW/glfw3.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/glfw/include/GLFW/glfw3native.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/glfw/lib-vc2010-32/glfw3.lib" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/glfw/lib-vc2010-64/glfw3.lib" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/usynergy/README.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/usynergy/uSynergy.c" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/examples/libs/usynergy/uSynergy.h" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/imconfig.h" beforeDir="false" afterPath="$PROJECT_DIR$/external/imgui/imconfig.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/imgui.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/external/imgui/imgui.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/imgui.h" beforeDir="false" afterPath="$PROJECT_DIR$/external/imgui/imgui.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/imgui_demo.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/external/imgui/imgui_demo.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/imgui_draw.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/external/imgui/imgui_draw.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/imgui_internal.h" beforeDir="false" afterPath="$PROJECT_DIR$/external/imgui/imgui_internal.h" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/imgui_tables.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/external/imgui/imgui_tables.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/external/imgui/imgui_widgets.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/external/imgui/imgui_widgets.cpp" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/main.cpp" beforeDir="false" afterPath="$PROJECT_DIR$/main.cpp" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,66 +239,226 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
+  <component name="ProjectApplicationVersion">
+    <option name="ide" value="CLion" />
+    <option name="majorVersion" value="2025" />
+    <option name="minorVersion" value="2.4" />
+    <option name="productBranch" value="Classic" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 3
+}</component>
+  <component name="ProjectId" id="36CkaAyCdUkIuP4sX21W0ACOPtp" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
-    "CMake Application.atc_opengl.executor": "Run",
-    "CMake Application.tutorial.executor": "Run",
+    "CMake Application.imgui_radar.executor": "Run",
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "RunOnceActivity.RadMigrateCodeStyle": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.readMode.enableVisualFormatting": "true",
     "RunOnceActivity.west.config.association.type.startup.service": "true",
     "cf.first.check.clang-format": "false",
     "cidr.known.project.marker": "true",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultAutoModeForALLUsers.v1": "true",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
     "git-widget-placeholder": "main",
-    "junie.onboarding.icon.badge.shown": "true",
+    "last_opened_file_path": "C:/Users/rytui/Documents/GitHub/atc_imgui",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.lookFeel",
-    "to.speed.mode.migration.done": "true",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
-  <component name="RunManager" selected="CMake Application.atc_opengl">
+  <component name="RunManager" selected="CMake Application.imgui_radar">
     <configuration default="true" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="atc_opengl" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="atc_opengl" TARGET_NAME="tutorial" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="atc_opengl" RUN_TARGET_NAME="tutorial">
+    <configuration name="docs" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="imgui_radar" TARGET_NAME="docs" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
     </configuration>
-    <configuration name="glad" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="atc_opengl" TARGET_NAME="glad" CONFIG_NAME="Debug">
+    <configuration name="glfw" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="imgui_radar" TARGET_NAME="glfw" CONFIG_NAME="Debug">
       <method v="2">
         <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
       </method>
+    </configuration>
+    <configuration name="imgui_build" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="imgui_radar" TARGET_NAME="imgui_build" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="imgui_radar" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="imgui_radar" TARGET_NAME="imgui_radar" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="imgui_radar" RUN_TARGET_NAME="imgui_radar">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="uninstall" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="imgui_radar" TARGET_NAME="uninstall" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="update_mappings" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="imgui_radar" TARGET_NAME="update_mappings" CONFIG_NAME="Debug">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="PythonConfigurationType" factoryName="Python">
+      <module name="atc_imgui" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="Tox" factoryName="Tox">
+      <module name="atc_imgui" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Autodetect">
+      <module name="atc_imgui" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Doctests">
+      <module name="atc_imgui" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="" />
+      <option name="CLASS_NAME" value="" />
+      <option name="METHOD_NAME" value="" />
+      <option name="FOLDER_NAME" value="" />
+      <option name="TEST_TYPE" value="TEST_SCRIPT" />
+      <option name="PATTERN" value="" />
+      <option name="USE_PATTERN" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Nosetests">
+      <module name="atc_imgui" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_regexPattern" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Twisted Trial">
+      <module name="atc_imgui" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="Unittests">
+      <module name="atc_imgui" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="tests" factoryName="py.test">
+      <module name="atc_imgui" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="_new_keywords" value="&quot;&quot;" />
+      <option name="_new_parameters" value="&quot;&quot;" />
+      <option name="_new_additionalArguments" value="&quot;&quot;" />
+      <option name="_new_target" value="&quot;&quot;" />
+      <option name="_new_targetType" value="&quot;PATH&quot;" />
+      <method v="2" />
     </configuration>
     <list>
-      <item itemvalue="CMake Application.atc_opengl" />
-      <item itemvalue="CMake Application.glad" />
+      <item itemvalue="CMake Application.imgui_build" />
+      <item itemvalue="CMake Application.imgui_radar" />
+      <item itemvalue="CMake Application.uninstall" />
+      <item itemvalue="CMake Application.docs" />
+      <item itemvalue="CMake Application.glfw" />
+      <item itemvalue="CMake Application.update_mappings" />
     </list>
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
-      <changelist id="8ebbb9c3-535f-4b7a-b96c-c8e2dc2e5500" name="Changes" comment="" />
-      <created>1761745490448</created>
+      <changelist id="dfdadbc9-1d37-46f4-ac08-649ef4e3bb35" name="Changes" comment="" />
+      <created>1764518001671</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1761745490448</updated>
-      <workItem from="1761745491465" duration="2080000" />
+      <updated>1764518001671</updated>
+      <workItem from="1764518002980" duration="338000" />
+      <workItem from="1764518538663" duration="195000" />
     </task>
     <servers />
   </component>
