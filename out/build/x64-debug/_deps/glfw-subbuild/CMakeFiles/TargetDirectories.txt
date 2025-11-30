@@ -1,3 +1,0 @@
-C:/Users/Król/Downloads/Test/out/build/x64-debug/_deps/glfw-subbuild/CMakeFiles/glfw-populate.dir
-C:/Users/Król/Downloads/Test/out/build/x64-debug/_deps/glfw-subbuild/CMakeFiles/edit_cache.dir
-C:/Users/Król/Downloads/Test/out/build/x64-debug/_deps/glfw-subbuild/CMakeFiles/rebuild_cache.dir
