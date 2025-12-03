@@ -43,11 +43,23 @@ target_include_directories(imgui_build PUBLIC
 add_executable(imgui_radar main.cpp)
 
 # Linkowanie
-target_link_libraries(imgui_radar PRIVATE
-    imgui_build
-    glfw
-    OpenGL32.lib
-    user32.lib
-    gdi32.lib
-    shell32.lib
-)
+target_link_libraries(imgui_radar imgui_build glfw)
+
+# Platform-specific libraries
+if (WIN32)
+    target_link_libraries(imgui_radar
+            opengl32
+            user32
+            gdi32
+            shell32
+    )
+elseif (UNIX AND NOT APPLE)  # Linux
+    find_package(OpenGL REQUIRED)
+    target_link_libraries(imgui_radar
+            OpenGL::GL
+            X11
+            pthread
+            dl
+            rt
+    )
+endif()
