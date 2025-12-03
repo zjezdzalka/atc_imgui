@@ -87,6 +87,13 @@ int main(int, char**)
     }
     int selected_index = -1;
 
+    // Camera/view state
+    float camera_x = 0.0f; // Camera offset in km
+    float camera_y = 0.0f;
+    float zoom_level = 1.0f; // 1.0 = normal, >1.0 = zoomed in, <1.0 = zoomed out
+    bool is_panning = false;
+    ImVec2 last_mouse_pos;
+
     double last_time = glfwGetTime();
 
     while (!glfwWindowShouldClose(window))
@@ -97,6 +104,10 @@ int main(int, char**)
         if (dt <= 0.0f) dt = 1.0f / 60.0f;
         last_time = now;
 
+        // Get display size (used for fullscreen radar and rendering)
+        int display_w, display_h;
+        glfwGetFramebufferSize(window, &display_w, &display_h);
+
         // Poll events
         glfwPollEvents();
 
@@ -106,7 +117,7 @@ int main(int, char**)
             // Update timers
             if (a.response_timer > 0.0f)
                 a.response_timer -= dt;
-            
+
             // Handle command delay - apply pending targets when delay expires
             if (a.command_delay > 0.0f)
             {
@@ -277,16 +288,16 @@ int main(int, char**)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        // Radar window layout
+        // Radar window layout - FULLSCREEN
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoTitleBar |
             ImGuiWindowFlags_NoResize |
             ImGuiWindowFlags_NoMove |
             ImGuiWindowFlags_NoScrollbar |
-            ImGuiWindowFlags_NoSavedSettings;
+            ImGuiWindowFlags_NoSavedSettings |
+            ImGuiWindowFlags_NoBringToFrontOnFocus;
 
-        ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
-        ImVec2 winSize(700, 700);
-        ImGui::SetNextWindowSize(winSize, ImGuiCond_Always);
+        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2((float)display_w, (float)display_h), ImGuiCond_Always);
 
         ImGui::Begin("Radar", nullptr, window_flags);
 
@@ -298,28 +309,66 @@ int main(int, char**)
         ImVec2 center(win_pos.x + win_size.x * 0.5f, win_pos.y + win_size.y * 0.5f);
         float radius_max = (win_size.x < win_size.y ? win_size.x : win_size.y) * 0.45f;
 
+        // Handle mouse input for panning and zooming
+        ImVec2 mouse_pos = ImGui::GetMousePos();
+        bool is_radar_hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
+
+        // Zoom with mouse wheel (works with touchpad two-finger scroll)
+        if (is_radar_hovered)
+        {
+            float wheel = io.MouseWheel;
+            if (wheel != 0.0f)
+            {
+                float zoom_factor = 1.0f + wheel * 0.15f; // Increased sensitivity for touchpad
+                float new_zoom = zoom_level * zoom_factor;
+                // Limit zoom range
+                new_zoom = std::max(0.2f, std::min(5.0f, new_zoom));
+
+                // Zoom toward mouse position
+                ImVec2 mouse_rel(mouse_pos.x - center.x, mouse_pos.y - center.y);
+                float scale_before = radius_max / (radar_range_km * zoom_level);
+                float scale_after = radius_max / (radar_range_km * new_zoom);
+
+                camera_x += mouse_rel.x / scale_before - mouse_rel.x / scale_after;
+                camera_y -= mouse_rel.y / scale_before - mouse_rel.y / scale_after;
+
+                zoom_level = new_zoom;
+            }
+        }
+
+        // Pan with left mouse drag (while holding Shift key for touchpad users)
+        // OR middle/right mouse button
+        bool shift_held = io.KeyShift;
+        bool should_pan = is_radar_hovered && (
+            (ImGui::IsMouseDown(0) && shift_held) ||  // Left click + Shift
+            ImGui::IsMouseDown(2) ||                   // Middle mouse
+            ImGui::IsMouseDown(1)                      // Right mouse
+        );
+
+        if (should_pan)
+        {
+            if (!is_panning)
+            {
+                is_panning = true;
+                last_mouse_pos = mouse_pos;
+            }
+            else
+            {
+                ImVec2 delta(mouse_pos.x - last_mouse_pos.x, mouse_pos.y - last_mouse_pos.y);
+                float scale = radius_max / (radar_range_km * zoom_level);
+                camera_x -= delta.x / scale;
+                camera_y += delta.y / scale; // Inverted Y
+                last_mouse_pos = mouse_pos;
+            }
+        }
+        else
+        {
+            is_panning = false;
+        }
+
         ImU32 col_green = IM_COL32(0, 255, 0, 100);
         ImU32 bg = IM_COL32(0, 20, 0, 200);
         draw_list->AddRectFilled(win_pos, ImVec2(win_pos.x + win_size.x, win_pos.y + win_size.y), bg, 8.0f);
-
-        // Draw rings and labels
-        const int rings = 4;
-        for (int i = 1; i <= rings; ++i)
-        {
-            float r = (radius_max * i) / rings;
-            draw_list->AddCircle(center, r, col_green, 64, 1.0f);
-            float range_km = (radar_range_km * i) / rings;
-            float range_nm = range_km * 0.539957f;
-            std::ostringstream ss;
-            ss << std::fixed << std::setprecision(0) << range_nm << " nm";
-            ImVec2 label_pos(center.x + r - 40, center.y - 12);
-            draw_list->AddText(label_pos, col_green, ss.str().c_str());
-        }
-
-        // Crosshair
-        draw_list->AddLine(ImVec2(center.x - radius_max, center.y), ImVec2(center.x + radius_max, center.y), col_green, 1.0f);
-        draw_list->AddLine(ImVec2(center.x, center.y - radius_max), ImVec2(center.x, center.y + radius_max), col_green, 1.0f);
-        draw_list->AddCircleFilled(center, 3.0f, col_green);
 
         // Draw runways and ILS approach lines
         ImU32 runway_color = IM_COL32(100, 150, 255, 255);
@@ -328,80 +377,130 @@ int main(int, char**)
         // Runway 09/27 (East-West)
         float runway_length = 60.0f; // pixels
         float runway_width = 8.0f;
-        ImVec2 rwy_09_start(center.x - runway_length/2, center.y);
-        ImVec2 rwy_09_end(center.x + runway_length/2, center.y);
-        draw_list->AddRectFilled(
-            ImVec2(rwy_09_start.x, rwy_09_start.y - runway_width/2),
-            ImVec2(rwy_09_end.x, rwy_09_end.y + runway_width/2),
-            runway_color
-        );
-
-        // ILS approach lines for 09/27
-        float ils_length = radius_max * 0.6f;
-        draw_list->AddLine(
-            ImVec2(rwy_09_start.x - ils_length, center.y),
-            rwy_09_start,
-            ils_color, 2.0f
-        );
-        draw_list->AddLine(
-            rwy_09_end,
-            ImVec2(rwy_09_end.x + ils_length, center.y),
-            ils_color, 2.0f
-        );
-
-        // Runway 18/36 (North-South)
-        ImVec2 rwy_18_start(center.x, center.y - runway_length/2);
-        ImVec2 rwy_18_end(center.x, center.y + runway_length/2);
-        draw_list->AddRectFilled(
-            ImVec2(rwy_18_start.x - runway_width/2, rwy_18_start.y),
-            ImVec2(rwy_18_end.x + runway_width/2, rwy_18_end.y),
-            runway_color
-        );
-
-        // ILS approach lines for 18/36
-        draw_list->AddLine(
-            ImVec2(center.x, rwy_18_start.y - ils_length),
-            rwy_18_start,
-            ils_color, 2.0f
-        );
-        draw_list->AddLine(
-            rwy_18_end,
-            ImVec2(center.x, rwy_18_end.y + ils_length),
-            ils_color, 2.0f
-        );
-
-        // Runway labels
-        draw_list->AddText(ImVec2(rwy_09_start.x - 25, center.y + 12), runway_color, "27");
-        draw_list->AddText(ImVec2(rwy_09_end.x + 8, center.y + 12), runway_color, "09");
-        draw_list->AddText(ImVec2(center.x + 10, rwy_18_start.y - 5), runway_color, "36");
-        draw_list->AddText(ImVec2(center.x + 10, rwy_18_end.y - 5), runway_color, "18");
 
         // Rotating sweep line
         float time = (float)ImGui::GetTime();
         float speed = 0.8f;
-        float angle = fmodf(time * speed, 2.0f * IM_PI);
-        float sweep_length = radius_max;
-        ImVec2 sweep_end(center.x + cosf(angle) * sweep_length, center.y + sinf(angle) * sweep_length);
-        ImU32 sweep_color = IM_COL32(120, 255, 120, 255);
-        draw_list->AddLine(center, sweep_end, sweep_color, 2.0f);
 
-        // Sweep trail glow
-        const int trail_segments = 30;
-        for (int i = 1; i < trail_segments; ++i)
-        {
-            float fade = 1.0f - (float)i / trail_segments;
-            float trail_angle = angle - (i * 0.02f);
-            ImVec2 tail(center.x + cosf(trail_angle) * sweep_length, center.y + sinf(trail_angle) * sweep_length);
-            ImU32 trail_color = IM_COL32(0, (int)(200 * fade), 0, (int)(120 * fade));
-            draw_list->AddLine(center, tail, trail_color, 1.0f);
-        }
+        ImU32 sweep_color = IM_COL32(120, 255, 120, 255);
 
         // Helper: world (km) -> screen pos
-        auto world_to_screen = [&](float wx, float wy) -> ImVec2
-            {
-                float scale = radius_max / radar_range_km;
-                return ImVec2(center.x + wx * scale, center.y - wy * scale);
-            };
+        auto world_to_screen = [&](float wx, float wy)
+        {
+            float scale = radius_max / (radar_range_km * zoom_level);
+
+            float vx = wx - camera_x;
+            float vy = wy - camera_y;
+
+            return ImVec2(
+                center.x + vx * scale,
+                center.y - vy * scale
+            );
+        };
+
+        // Draw rings and labels
+        const int rings = 4;
+        for (int i = 1; i <= rings; ++i)
+        {
+            float km_radius = (radar_range_km * i) / rings;
+
+            // Convert TWO world points; use distance between them
+            ImVec2 p0 = world_to_screen(0, 0);
+            ImVec2 p1 = world_to_screen(km_radius, 0);
+
+            float screen_r = fabs(p1.x - p0.x);
+
+            draw_list->AddCircle(p0, screen_r, col_green, 128, 1.0f);
+
+            // Label
+            float range_nm = km_radius * 0.539957f;
+            std::ostringstream ss;
+            ss << (int)range_nm << " nm";
+
+            draw_list->AddText(
+                ImVec2(p0.x + screen_r - 30, p0.y - 12),
+                col_green,
+                ss.str().c_str()
+            );
+        }
+
+        // Runway positions in world KM (centered)
+        ImVec2 rw09 = world_to_screen(-1.0f, 0.0f);
+        ImVec2 rw27 = world_to_screen(+1.0f, 0.0f);
+
+        ImVec2 rw18 = world_to_screen(0.0f, -1.0f);
+        ImVec2 rw36 = world_to_screen(0.0f, +1.0f);
+
+        draw_list->AddLine(rw09, rw27, runway_color, 8.0f);
+
+        ImVec2 ils09 = world_to_screen(-6.0f, 0.0f);
+        ImVec2 ils27 = world_to_screen(+6.0f, 0.0f);
+
+        draw_list->AddLine(ils09, rw09, ils_color, 2.0f);
+        draw_list->AddLine(rw27, ils27, ils_color, 2.0f);
+
+        draw_list->AddLine(rw18, rw36, runway_color, 8.0f);
+
+        ImVec2 ils18 = world_to_screen(0.0f, -6.0f);
+        ImVec2 ils36 = world_to_screen(0.0f, +6.0f);
+
+        draw_list->AddLine(ils18, rw18, ils_color, 2.0f);
+        draw_list->AddLine(rw36, ils36, ils_color, 2.0f);
+
+        draw_list->AddText(rw27, runway_color, "09");
+        draw_list->AddText(rw09, runway_color, "27");
+        draw_list->AddText(rw36, runway_color, "36");
+        draw_list->AddText(rw18, runway_color, "18");
+
+        // Radar sweep (in world coordinates)
+        float sweep_angle = fmodf(ImGui::GetTime() * 0.8f, 2.0f * IM_PI);
+
+        // sweep length in world km
+        float sweep_length_km = radar_range_km;
+
+        // sweep endpoints in world space
+        float sx = cosf(sweep_angle) * sweep_length_km;
+        float sy = sinf(sweep_angle) * sweep_length_km;
+
+        // convert to screen
+        ImVec2 sweep_center = world_to_screen(0.0f, 0.0f);
+        ImVec2 sweep_tip    = world_to_screen(sx, sy);
+
+        draw_list->AddLine(sweep_center, sweep_tip, sweep_color, 2.0f);
+
+        // world axes (in km)
+        float axis_len_km = radar_range_km;
+
+        // horizontal line (east-west)
+        ImVec2 left  = world_to_screen(-axis_len_km, 0.0f);
+        ImVec2 right = world_to_screen(+axis_len_km, 0.0f);
+        draw_list->AddLine(left, right, col_green, 1.0f);
+
+        // vertical line (north-south)
+        ImVec2 down = world_to_screen(0.0f, -axis_len_km);
+        ImVec2 up   = world_to_screen(0.0f, +axis_len_km);
+        draw_list->AddLine(down, up, col_green, 1.0f);
+
+        // center dot
+        ImVec2 c = world_to_screen(0.0f, 0.0f);
+        draw_list->AddCircleFilled(c, 3.0f, col_green);
+
+        // trail
+        const int trail_segments = 25;
+        for (int i = 1; i < trail_segments; i++)
+        {
+            float fade = 1.0f - (float)i / trail_segments;
+            float a = sweep_angle - (i * 0.03f);
+
+            float tx = cosf(a) * sweep_length_km;
+            float ty = sinf(a) * sweep_length_km;
+
+            ImVec2 tpos = world_to_screen(tx, ty);
+            ImU32 trail_color = IM_COL32(0, (int)(200 * fade), 0, (int)(120 * fade));
+
+            draw_list->AddLine(sweep_center, tpos, trail_color, 1.0f);
+        }
+
 
         // Draw aircraft blips
         for (size_t i = 0; i < aircraft.size(); ++i)
@@ -534,28 +633,53 @@ int main(int, char**)
 
             if (ImGui::Button("-1000 ft"))
             {
-                sel.pending_altitude_ft -= 1000.0f;
-                if (sel.pending_altitude_ft < 0) sel.pending_altitude_ft = 0;
-                sel.setCommand("Roger, descending one thousand feet");
+                float old = sel.pending_altitude_ft;
+                sel.pending_altitude_ft = std::max(0.0f, sel.pending_altitude_ft - 1000.0f);
+
+                float diff = fabs(sel.pending_altitude_ft - old);
+
+                std::ostringstream r;
+                r << "Roger, descending " << (int)diff << " feet";
+                sel.setCommand(r.str());
             }
             ImGui::SameLine();
+
             if (ImGui::Button("-100 ft"))
             {
-                sel.pending_altitude_ft -= 100.0f;
-                if (sel.pending_altitude_ft < 0) sel.pending_altitude_ft = 0;
-                sel.setCommand("Roger, descending one hundred feet");
+                float old = sel.pending_altitude_ft;
+                sel.pending_altitude_ft = std::max(0.0f, sel.pending_altitude_ft - 100.0f);
+
+                float diff = fabs(sel.pending_altitude_ft - old);
+
+                std::ostringstream r;
+                r << "Roger, descending " << (int)diff << " feet";
+                sel.setCommand(r.str());
             }
             ImGui::SameLine();
+
             if (ImGui::Button("+100 ft"))
             {
+                float old = sel.pending_altitude_ft;
                 sel.pending_altitude_ft += 100.0f;
-                sel.setCommand("Roger, climbing one hundred feet");
+
+                float diff = fabs(sel.pending_altitude_ft - old);
+
+                std::ostringstream r;
+                r << "Roger, climbing " << (int)diff << " feet";
+                sel.setCommand(r.str());
             }
             ImGui::SameLine();
+
             if (ImGui::Button("+1000 ft"))
             {
+                float old = sel.pending_altitude_ft;
                 sel.pending_altitude_ft += 1000.0f;
-                sel.setCommand("Roger, climbing one thousand feet");
+
+                float diff = fabs(sel.pending_altitude_ft - old);
+
+                std::ostringstream r;
+                r << "Roger, climbing " << (int)diff << " feet";
+                sel.setCommand(r.str());
             }
 
             ImGui::Separator();
@@ -572,16 +696,28 @@ int main(int, char**)
 
             if (ImGui::Button("-5°"))
             {
-                sel.pending_heading_deg += 5.0f;
-                if (sel.pending_heading_deg >= 360.0f) sel.pending_heading_deg -= 360.0f;
-                sel.setCommand("Roger, turning left five degrees");
+                float old = sel.pending_heading_deg;
+                sel.pending_heading_deg = fmodf(sel.pending_heading_deg + 5.0f, 360.0f);
+
+                float diff = angle_difference(sel.pending_heading_deg, old);
+                if (diff < 0) diff = -diff;     // always positive
+
+                std::ostringstream r;
+                r << "Roger, turning left " << (int)diff << " degrees";
+                sel.setCommand(r.str());
             }
             ImGui::SameLine();
             if (ImGui::Button("+5°"))
             {
-                sel.pending_heading_deg -= 5.0f;
-                if (sel.pending_heading_deg < 0) sel.pending_heading_deg += 360.0f;
-                sel.setCommand("Roger, turning right five degrees");
+                float old = sel.pending_heading_deg;
+                sel.pending_heading_deg = fmodf(sel.pending_heading_deg - 5.0f + 360.0f, 360.0f);
+
+                float diff = angle_difference(old, sel.pending_heading_deg);
+                if (diff < 0) diff = -diff;
+
+                std::ostringstream r;
+                r << "Roger, turning right " << (int)diff << " degrees";
+                sel.setCommand(r.str());
             }
 
             ImGui::Separator();
@@ -598,15 +734,27 @@ int main(int, char**)
 
             if (ImGui::Button("-5 kts"))
             {
-                sel.pending_speed_kts -= 5.0f;
-                if (sel.pending_speed_kts < 0) sel.pending_speed_kts = 0;
-                sel.setCommand("Roger, reducing speed five knots");
+                float old = sel.pending_speed_kts;
+                sel.pending_speed_kts = std::max(0.0f, sel.pending_speed_kts - 5.0f);
+
+                float diff = fabs(sel.pending_speed_kts - old);
+
+                std::ostringstream r;
+                r << "Roger, reducing speed " << (int)diff << " knots";
+                sel.setCommand(r.str());
             }
             ImGui::SameLine();
+
             if (ImGui::Button("+5 kts"))
             {
+                float old = sel.pending_speed_kts;
                 sel.pending_speed_kts += 5.0f;
-                sel.setCommand("Roger, increasing speed five knots");
+
+                float diff = fabs(sel.pending_speed_kts - old);
+
+                std::ostringstream r;
+                r << "Roger, increasing speed " << (int)diff << " knots";
+                sel.setCommand(r.str());
             }
 
             //---------------------------------------------------------------
@@ -873,12 +1021,26 @@ int main(int, char**)
         }
         ImGui::Text("Aircraft: %zu", aircraft.size());
         ImGui::Text("Conflicts: %zu", conflicts.size());
+
+        ImGui::Separator();
+        ImGui::Text("Camera Controls:");
+        ImGui::BulletText("Two-finger scroll: Zoom");
+        ImGui::BulletText("Shift + Drag: Pan");
+        ImGui::BulletText("Right Click Drag: Pan");
+        ImGui::Text("Zoom: %.1fx", zoom_level);
+        ImGui::Text("Offset: (%.1f, %.1f) km", camera_x, camera_y);
+
+        if (ImGui::Button("Reset View"))
+        {
+            camera_x = 0.0f;
+            camera_y = 0.0f;
+            zoom_level = 1.0f;
+        }
+
         ImGui::End();
 
         // Render
         ImGui::Render();
-        int display_w, display_h;
-        glfwGetFramebufferSize(window, &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
