@@ -1,4 +1,4 @@
-// main.cpp
+
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -100,8 +100,8 @@ int main(int, char**)
         a.x = cosf(theta) * r;
         a.y = sinf(theta) * r;
 
-        a.altitude_ft = 2000.0f + (rand() % 38000);
-        a.heading_deg = (float)(rand() % 360);
+        a.altitude_ft = 1600.0f + (rand() % 430)*100;
+        a.heading_deg = (float)(rand() % 72)*5;
         a.speed_kts = 130.0f + (rand() % 300); // 130..430 kts
         a.selected = false;
         aircraft.push_back(a);
@@ -179,8 +179,8 @@ int main(int, char**)
         ImVec2 center(win_pos.x + win_size.x * 0.5f, win_pos.y + win_size.y * 0.5f);
         float radius_max = (win_size.x < win_size.y ? win_size.x : win_size.y) * 0.45f;
 
-        ImU32 col_green = IM_COL32(0, 255, 0, 200);
-        ImU32 bg = IM_COL32(0, 40, 0, 200);
+        ImU32 col_green = IM_COL32(0, 255, 0, 100);
+        ImU32 bg = IM_COL32(0, 20, 0, 200);
         draw_list->AddRectFilled(win_pos, ImVec2(win_pos.x + win_size.x, win_pos.y + win_size.y), bg, 8.0f);
 
         // Draw rings (range markers) and labels
@@ -200,9 +200,9 @@ int main(int, char**)
 
         // Crosshair
         draw_list->AddLine(ImVec2(center.x - radius_max, center.y), ImVec2(center.x + radius_max, center.y), col_green,
-                           1.0f);
+            1.0f);
         draw_list->AddLine(ImVec2(center.x, center.y - radius_max), ImVec2(center.x, center.y + radius_max), col_green,
-                           1.0f);
+            1.0f);
         draw_list->AddCircleFilled(center, 3.0f, col_green);
 
         // Rotating sweep line
@@ -227,11 +227,11 @@ int main(int, char**)
 
         // Helper: world (km) -> screen pos
         auto world_to_screen = [&](float wx, float wy) -> ImVec2
-        {
-            // scale: pixels per km
-            float scale = radius_max / radar_range_km;
-            return ImVec2(center.x + wx * scale, center.y - wy * scale); // y is inverted: world +y north -> screen -y
-        };
+            {
+                // scale: pixels per km
+                float scale = radius_max / radar_range_km;
+                return ImVec2(center.x + wx * scale, center.y - wy * scale); // y is inverted: world +y north -> screen -y
+            };
 
         // Draw aircraft blips
         for (size_t i = 0; i < aircraft.size(); ++i)
@@ -423,62 +423,62 @@ int main(int, char**)
 
             // Callback for history + autocomplete
             ImGuiInputTextCallback text_callback = [](ImGuiInputTextCallbackData* data) -> int
-            {
-                auto* hist = reinterpret_cast<std::vector<std::string>*>(data->UserData);
-
-                // HISTORY (Up/Down)
-                if (data->EventFlag == ImGuiInputTextFlags_CallbackHistory)
                 {
-                    if (hist->empty()) return 0;
+                    auto* hist = reinterpret_cast<std::vector<std::string>*>(data->UserData);
 
-                    if (data->EventKey == ImGuiKey_UpArrow)
+                    // HISTORY (Up/Down)
+                    if (data->EventFlag == ImGuiInputTextFlags_CallbackHistory)
                     {
-                        if (history_index == -1)
-                            history_index = (int)hist->size() - 1;
-                        else if (history_index > 0)
-                            history_index--;
+                        if (hist->empty()) return 0;
 
-                        data->DeleteChars(0, data->BufTextLen);
-                        data->InsertChars(0, (*hist)[history_index].c_str());
-                    }
-                    else if (data->EventKey == ImGuiKey_DownArrow)
-                    {
-                        if (history_index >= 0)
+                        if (data->EventKey == ImGuiKey_UpArrow)
                         {
-                            history_index++;
-                            if (history_index >= (int)hist->size())
-                                history_index = -1;
+                            if (history_index == -1)
+                                history_index = (int)hist->size() - 1;
+                            else if (history_index > 0)
+                                history_index--;
 
                             data->DeleteChars(0, data->BufTextLen);
-
-                            if (history_index != -1)
-                                data->InsertChars(0, (*hist)[history_index].c_str());
+                            data->InsertChars(0, (*hist)[history_index].c_str());
                         }
-                    }
-                }
-
-                // TAB COMPLETION
-                else if (data->EventFlag == ImGuiInputTextFlags_CallbackCompletion)
-                {
-                    const char* input = data->Buf;
-
-                    for (int i = 0; i < known_cmd_count; i++)
-                    {
-                        if (strncmp(input, known_cmds[i], strlen(input)) == 0)
+                        else if (data->EventKey == ImGuiKey_DownArrow)
                         {
-                            data->DeleteChars(0, data->BufTextLen);
-                            data->InsertChars(0, known_cmds[i]);
-                            break;
+                            if (history_index >= 0)
+                            {
+                                history_index++;
+                                if (history_index >= (int)hist->size())
+                                    history_index = -1;
+
+                                data->DeleteChars(0, data->BufTextLen);
+
+                                if (history_index != -1)
+                                    data->InsertChars(0, (*hist)[history_index].c_str());
+                            }
                         }
                     }
-                }
 
-                return 0;
-            };
+                    // TAB COMPLETION
+                    else if (data->EventFlag == ImGuiInputTextFlags_CallbackCompletion)
+                    {
+                        const char* input = data->Buf;
+
+                        for (int i = 0; i < known_cmd_count; i++)
+                        {
+                            if (strncmp(input, known_cmds[i], strlen(input)) == 0)
+                            {
+                                data->DeleteChars(0, data->BufTextLen);
+                                data->InsertChars(0, known_cmds[i]);
+                                break;
+                            }
+                        }
+                    }
+
+                    return 0;
+                };
 
 
             if (ImGui::InputText("##cmd", command_buf, IM_ARRAYSIZE(command_buf),
-                                 flags, text_callback, &history))
+                flags, text_callback, &history))
             {
                 std::string cmd = command_buf;
                 command_buf[0] = '\0';
@@ -498,12 +498,12 @@ int main(int, char**)
                 // -----------------------------------------------------
 
                 auto extract_number = [&](const std::string& s) -> float
-                {
-                    for (int i = 0; i < (int)s.size(); i++)
-                        if ((s[i] >= '0' && s[i] <= '9'))
-                            return atof(s.c_str() + i);
-                    return 0.0f;
-                };
+                    {
+                        for (int i = 0; i < (int)s.size(); i++)
+                            if ((s[i] >= '0' && s[i] <= '9'))
+                                return atof(s.c_str() + i);
+                        return 0.0f;
+                    };
 
                 // Flight levels: FL180 = 18,000 ft
                 if (u.rfind("FL", 0) == 0)
@@ -571,7 +571,7 @@ int main(int, char**)
             if (!command_feedback.empty())
             {
                 ImGui::TextColored(ImVec4(0.7f, 1.0f, 0.7f, 1.0f),
-                                   "%s", command_feedback.c_str());
+                    "%s", command_feedback.c_str());
             }
 
             // -----------------------------------------------------
@@ -582,7 +582,7 @@ int main(int, char**)
             ImGui::BeginChild("cheatsheet", ImVec2(0, 302), true);
 
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
-                               "HEADING / TURNS");
+                "HEADING / TURNS");
             ImGui::BulletText("HDG 270");
             ImGui::BulletText("HEADING 090");
             ImGui::BulletText("TURN LEFT 20");
@@ -590,7 +590,7 @@ int main(int, char**)
             ImGui::BulletText("TURN LEFT HEADING 180");
 
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
-                               "ALTITUDE");
+                "ALTITUDE");
             ImGui::BulletText("ALT 12000");
             ImGui::BulletText("ALTITUDE 8000");
             ImGui::BulletText("CLIMB 1000");
@@ -600,7 +600,7 @@ int main(int, char**)
             ImGui::BulletText("FL180 (sets 18,000 ft)");
 
             ImGui::TextColored(ImVec4(0.8f, 1.0f, 0.8f, 1.0f),
-                               "SPEED");
+                "SPEED");
             ImGui::BulletText("SPD 220");
             ImGui::BulletText("SPEED 280");
 
