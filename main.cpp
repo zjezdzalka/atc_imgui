@@ -409,7 +409,8 @@ int main(int, char**)
                 "TURN LEFT ", "TURN LEFT HEADING ",
                 "TURN RIGHT ", "TURN RIGHT HEADING "
             };
-            const int known_cmd_count = sizeof(known_cmds) / sizeof(const char*);
+
+            static const int known_cmd_count = sizeof(known_cmds) / sizeof(const char*);
 
             // === INPUT TEXT BOX ===
             ImGui::Separator();
@@ -421,7 +422,7 @@ int main(int, char**)
                 ImGuiInputTextFlags_CallbackCompletion;
 
             // Callback for history + autocomplete
-            auto text_callback = [](ImGuiInputTextCallbackData* data) -> int
+            ImGuiInputTextCallback text_callback = [](ImGuiInputTextCallbackData* data) -> int
             {
                 auto* hist = reinterpret_cast<std::vector<std::string>*>(data->UserData);
 
