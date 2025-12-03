@@ -3,8 +3,10 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
-#include <stdio.h>
-#include <math.h>
+#include "function/glfw.cpp"
+
+#include <cstdio>
+#include <cmath>
 #include <GLFW/glfw3.h>
 
 #include <vector>
@@ -19,10 +21,7 @@
 #define IM_PI 3.14159265358979323846f
 #endif
 
-static void glfw_error_callback(int error, const char* description)
-{
-    fprintf(stderr, "Glfw Error %d: %s\n", error, description);
-}
+using namespace std;
 
 struct Aircraft
 {
@@ -32,6 +31,7 @@ struct Aircraft
     float y = 0.0f;
     float altitude_ft = 10000.0f;
     float heading_deg = 0.0f; // 0 = east, +counterclockwise (so 90 = north)
+    // 0 should be north, clockwise -> 90 = east, 180 = south
     float speed_kts = 250.0f; // knots
     bool selected = false;
 
@@ -47,29 +47,54 @@ struct Aircraft
 static float deg_to_rad(float d) { return d * (IM_PI / 180.0f); }
 static float rad_to_deg(float r) { return r * (180.0f / IM_PI); }
 
+void generateAircraft(vector<Aircraft>& aircrafts, Aircraft& a, const float radar_range_km, const int i) {
+    std::ostringstream ss;
+    ss << "AC" << std::setw(2) << std::setfill('0') << (i + 1);
+    a.callsign = ss.str();
+
+    // random position in circle
+    const float r = ((float)rand() / RAND_MAX) * radar_range_km;
+    const float theta = ((float)rand() / RAND_MAX) * 2.0f * IM_PI;
+    a.x = cosf(theta) * r;
+    a.y = sinf(theta) * r;
+
+    a.altitude_ft = 1600.0f + (rand() % 430)*100;
+    a.heading_deg = (float)(rand() % 72)*5;
+    a.speed_kts = 130.0f + (rand() % 300); // 130..430 kts
+    a.selected = false;
+}
+
+static constexpr float radar_range_km = 80.0f; // total radius in kilometers
+
 int main(int, char**)
 {
     srand((unsigned)time(nullptr));
+    fprintf(stdout, "Randomized seed.");
 
     glfwSetErrorCallback(glfw_error_callback);
-    if (!glfwInit())
+    if (!glfwInit()) {
+        fprintf(stderr, "Error: GLFW initialization failed.");
         return 1;
+    }
 
-#if __APPLE__
-    const char* glsl_version = "#version 150";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#else
-    const char* glsl_version = "#version 130";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-#endif
+    #if __APPLE__
+        const char* glsl_version = "#version 150";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    #else
+        const char* glsl_version = "#version 130";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    #endif
 
     GLFWwindow* window = glfwCreateWindow(1024, 768, "Air Traffic Controller", NULL, NULL);
-    if (window == NULL)
+    if (window == NULL) {
+        fprintf(stderr, "Error: Window failed to load.");
         return 1;
+    }
+    else fprintf(stdout, "Window created.");
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
@@ -86,24 +111,10 @@ int main(int, char**)
     // --- Simulation state ---
     std::vector<Aircraft> aircraft;
     const int initial_count = 12;
-    const float radar_range_km = 80.0f; // total radius in kilometers
     for (int i = 0; i < initial_count; ++i)
     {
         Aircraft a;
-        std::ostringstream ss;
-        ss << "AC" << std::setw(2) << std::setfill('0') << (i + 1);
-        a.callsign = ss.str();
-
-        // random position in circle
-        float r = ((float)rand() / RAND_MAX) * radar_range_km;
-        float theta = ((float)rand() / RAND_MAX) * 2.0f * IM_PI;
-        a.x = cosf(theta) * r;
-        a.y = sinf(theta) * r;
-
-        a.altitude_ft = 1600.0f + (rand() % 430)*100;
-        a.heading_deg = (float)(rand() % 72)*5;
-        a.speed_kts = 130.0f + (rand() % 300); // 130..430 kts
-        a.selected = false;
+        generateAircraft(aircraft, a, radar_range_km, i);
         aircraft.push_back(a);
     }
     int selected_index = -1;
@@ -343,6 +354,12 @@ int main(int, char**)
             // === ALTITUDE ===
             ImGui::Text("Altitude: %.0f ft", sel.altitude_ft);
 
+            if (ImGui::Button("-1000 ft"))
+            {
+                sel.altitude_ft -= 1000.0f;
+                if (sel.altitude_ft < 0) sel.altitude_ft = 0;
+            }
+            ImGui::SameLine();
             if (ImGui::Button("-100 ft"))
             {
                 sel.altitude_ft -= 100.0f;
@@ -352,6 +369,11 @@ int main(int, char**)
             if (ImGui::Button("+100 ft"))
             {
                 sel.altitude_ft += 100.0f;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("+1000 ft"))
+            {
+                sel.altitude_ft += 1000.0f;
             }
 
 
@@ -624,16 +646,7 @@ int main(int, char**)
         if (ImGui::Button("Spawn Random AC"))
         {
             Aircraft a;
-            std::ostringstream ss;
-            ss << "AC" << std::setw(2) << std::setfill('0') << (aircraft.size() + 1);
-            a.callsign = ss.str();
-            float r = ((float)rand() / RAND_MAX) * radar_range_km;
-            float theta = ((float)rand() / RAND_MAX) * 2.0f * IM_PI;
-            a.x = cosf(theta) * r;
-            a.y = sinf(theta) * r;
-            a.altitude_ft = 2000.0f + (rand() % 38000);
-            a.heading_deg = (float)(rand() % 360);
-            a.speed_kts = 130.0f + (rand() % 300);
+            generateAircraft(aircraft, a, radar_range_km, aircraft.size());
             aircraft.push_back(a);
         }
         ImGui::Text("Aircraft: %zu", aircraft.size());
