@@ -19,9 +19,21 @@ struct Aircraft
     float y = 0.0f;
     float altitude_ft = 10000.0f;
     float heading_deg = 0.0f; // 0 = east, +counterclockwise (so 90 = north)
-    // 0 should be north, clockwise -> 90 = east, 180 = south
     float speed_kts = 250.0f; // knots
     bool selected = false;
+
+    // Target values for gradual transition
+    float target_altitude_ft = 10000.0f;
+    float target_heading_deg = 0.0f;
+    float target_speed_kts = 250.0f;
+
+    // Command acknowledgment system
+    std::string last_response = "";
+    float response_timer = 0.0f;
+
+    // Delay before starting transition (reaction time)
+    float command_delay = 0.0f;
+    bool has_pending_command = false;
 
     // convenience
     float distance2_to(const Aircraft& other) const
@@ -29,6 +41,23 @@ struct Aircraft
         float dx = x - other.x;
         float dy = y - other.y;
         return dx * dx + dy * dy;
+    }
+
+    // Initialize targets to current values
+    void initTargets()
+    {
+        target_altitude_ft = altitude_ft;
+        target_heading_deg = heading_deg;
+        target_speed_kts = speed_kts;
+    }
+
+    // Set new command with acknowledgment
+    void setCommand(const std::string& response, float delay = 3.5f)
+    {
+        last_response = response;
+        response_timer = 5.0f; // Show response for 5 seconds
+        command_delay = delay;
+        has_pending_command = true;
     }
 };
 
@@ -47,4 +76,7 @@ void generateAircraft(std::vector<Aircraft>& aircrafts, Aircraft& a, const float
     a.heading_deg = (float)(rand() % 72)*5;
     a.speed_kts = 130.0f + (rand() % 300); // 130..430 kts
     a.selected = false;
+
+    // Initialize targets
+    a.initTargets();
 }
