@@ -30,7 +30,6 @@ add_library(imgui_build
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-        function/glfw.cpp
 )
 
 # Dodaj ścieżki do nagłówków ImGui i GLFW (to właśnie naprawia Twój błąd!)

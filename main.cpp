@@ -4,65 +4,21 @@
 #include "imgui_impl_opengl3.h"
 
 #include "function/glfw.cpp"
+#include "function/aircraft.cpp"
 
 #include <cstdio>
 #include <cmath>
 #include <GLFW/glfw3.h>
 
-#include <vector>
-#include <string>
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
-#include <iomanip>
 #include <algorithm>
-
-#ifndef IM_PI
-#define IM_PI 3.14159265358979323846f
-#endif
 
 using namespace std;
 
-struct Aircraft
-{
-    std::string callsign;
-    // world position in kilometers relative to radar center (x east, y north)
-    float x = 0.0f;
-    float y = 0.0f;
-    float altitude_ft = 10000.0f;
-    float heading_deg = 0.0f; // 0 = east, +counterclockwise (so 90 = north)
-    // 0 should be north, clockwise -> 90 = east, 180 = south
-    float speed_kts = 250.0f; // knots
-    bool selected = false;
-
-    // convenience
-    float distance2_to(const Aircraft& other) const
-    {
-        float dx = x - other.x;
-        float dy = y - other.y;
-        return dx * dx + dy * dy;
-    }
-};
-
 static float deg_to_rad(float d) { return d * (IM_PI / 180.0f); }
 static float rad_to_deg(float r) { return r * (180.0f / IM_PI); }
-
-void generateAircraft(vector<Aircraft>& aircrafts, Aircraft& a, const float radar_range_km, const int i) {
-    std::ostringstream ss;
-    ss << "AC" << std::setw(2) << std::setfill('0') << (i + 1);
-    a.callsign = ss.str();
-
-    // random position in circle
-    const float r = ((float)rand() / RAND_MAX) * radar_range_km;
-    const float theta = ((float)rand() / RAND_MAX) * 2.0f * IM_PI;
-    a.x = cosf(theta) * r;
-    a.y = sinf(theta) * r;
-
-    a.altitude_ft = 1600.0f + (rand() % 430)*100;
-    a.heading_deg = (float)(rand() % 72)*5;
-    a.speed_kts = 130.0f + (rand() % 300); // 130..430 kts
-    a.selected = false;
-}
 
 static constexpr float radar_range_km = 80.0f; // total radius in kilometers
 
@@ -143,7 +99,7 @@ int main(int, char**)
             a.y += sinf(ang) * speed_kms * dt;
         }
 
-        // Basic conflict detection: if two aircraft are within 5 km horizontally and 1000 ft vertically
+        // Basic conflict detection: if two aircraft are within 5 nm horizontally and 1000 ft vertically
         const float conflict_horiz_km = 5.0f;
         const float conflict_horiz_km2 = conflict_horiz_km * conflict_horiz_km;
         const float conflict_vert_ft = 1000.0f;
@@ -156,7 +112,7 @@ int main(int, char**)
                 float dx = aircraft[i].x - aircraft[j].x;
                 float dy = aircraft[i].y - aircraft[j].y;
                 float d2 = dx * dx + dy * dy;
-                float dz = fabsf(aircraft[i].altitude_ft - aircraft[j].altitude_ft);
+                float dz = abs(aircraft[i].altitude_ft - aircraft[j].altitude_ft);
                 if (d2 <= conflict_horiz_km2 && dz <= conflict_vert_ft)
                 {
                     conflicts.emplace_back((int)i, (int)j);
@@ -379,17 +335,18 @@ int main(int, char**)
 
             // === HEADING ===
             ImGui::Separator();
-            ImGui::Text("Heading: %.0f°", sel.heading_deg);
+            ImGui::Text("Heading: %.0f°", (450-sel.heading_deg)>360?450-sel.heading_deg-360:450-sel.heading_deg);
+            // fixes 0-360 without interfering with code
 
             if (ImGui::Button("-5°"))
             {
-                sel.heading_deg -= 5.0f;
+                sel.heading_deg += 5.0f; // issue with display
                 if (sel.heading_deg < 0) sel.heading_deg += 360.0f;
             }
             ImGui::SameLine();
             if (ImGui::Button("+5°"))
             {
-                sel.heading_deg += 5.0f;
+                sel.heading_deg -= 5.0f; // issue with display
                 if (sel.heading_deg >= 360.0f) sel.heading_deg -= 360.0f;
             }
 
