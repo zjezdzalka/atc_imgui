@@ -27,6 +27,15 @@ struct Aircraft
     float target_heading_deg = 0.0f;
     float target_speed_kts = 250.0f;
 
+    // Pending target values (applied after delay)
+    float pending_altitude_ft = 10000.0f;
+    float pending_heading_deg = 0.0f;
+    float pending_speed_kts = 250.0f;
+
+    // Velocity/rate values for smooth transitions
+    float altitude_rate_fps = 0.0f; // feet per second
+    float speed_rate_kps = 0.0f; // knots per second
+
     // Command acknowledgment system
     std::string last_response = "";
     float response_timer = 0.0f;
@@ -49,6 +58,11 @@ struct Aircraft
         target_altitude_ft = altitude_ft;
         target_heading_deg = heading_deg;
         target_speed_kts = speed_kts;
+        pending_altitude_ft = altitude_ft;
+        pending_heading_deg = heading_deg;
+        pending_speed_kts = speed_kts;
+        altitude_rate_fps = 0.0f;
+        speed_rate_kps = 0.0f;
     }
 
     // Set new command with acknowledgment
@@ -58,6 +72,8 @@ struct Aircraft
         response_timer = 5.0f; // Show response for 5 seconds
         command_delay = delay;
         has_pending_command = true;
+
+        // DON'T overwrite pending values - they're set externally before calling setCommand
     }
 };
 

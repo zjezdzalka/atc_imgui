@@ -107,67 +107,142 @@ int main(int, char**)
             if (a.response_timer > 0.0f)
                 a.response_timer -= dt;
             
+            // Handle command delay - apply pending targets when delay expires
             if (a.command_delay > 0.0f)
             {
                 a.command_delay -= dt;
                 if (a.command_delay <= 0.0f)
                 {
+                    // Apply the pending command
+                    a.target_altitude_ft = a.pending_altitude_ft;
+                    a.target_heading_deg = a.pending_heading_deg;
+                    a.target_speed_kts = a.pending_speed_kts;
                     a.has_pending_command = false;
                 }
             }
-            
-            // Gradual transitions to target values (only after delay expires)
-            if (a.command_delay <= 0.0f)
+
+            // Gradual transitions with smooth acceleration/deceleration
+            // More realistic rates for commercial aircraft
+            const float max_alt_rate = 33.33f; // max 2000 ft/min = 33.33 ft/s
+            const float alt_accel = 4.0f; // smoother acceleration ft/s²
+            const float max_speed_rate = 3.0f; // max 3 knots/s (more realistic for jets)
+            const float speed_accel = 0.5f; // slower acceleration knots/s²
+
+            // Altitude transition with smooth ease-in-out
+            float alt_diff = a.target_altitude_ft - a.altitude_ft;
+            if (fabs(alt_diff) > 1.0f)
             {
-                // Altitude transition (climb/descend rate: ~1500 ft/min = 25 ft/s)
-                float alt_diff = a.target_altitude_ft - a.altitude_ft;
-                if (fabs(alt_diff) > 1.0f)
+                // Calculate desired rate based on distance (with smoother curve)
+                float desired_rate = 0.0f;
+                float distance_factor = sqrtf(2.0f * alt_accel * fabs(alt_diff));
+
+                if (alt_diff > 0)
+                    desired_rate = std::min(max_alt_rate, distance_factor);
+                else
+                    desired_rate = -std::min(max_alt_rate, distance_factor);
+
+                // Smoothly adjust current rate toward desired rate
+                float rate_diff = desired_rate - a.altitude_rate_fps;
+                if (fabs(rate_diff) > 0.1f)
                 {
-                    float alt_rate = 25.0f * dt; // 25 ft per second
-                    if (alt_diff > 0)
-                        a.altitude_ft += std::min(alt_rate, alt_diff);
+                    float accel_step = alt_accel * dt;
+                    if (rate_diff > 0)
+                        a.altitude_rate_fps += std::min(accel_step, rate_diff);
                     else
-                        a.altitude_ft += std::max(-alt_rate, alt_diff);
+                        a.altitude_rate_fps += std::max(-accel_step, rate_diff);
                 }
                 else
+                {
+                    a.altitude_rate_fps = desired_rate;
+                }
+
+                // Apply rate to altitude
+                float new_altitude = a.altitude_ft + a.altitude_rate_fps * dt;
+
+                // Check if we've reached or passed target
+                if ((alt_diff > 0 && new_altitude >= a.target_altitude_ft) ||
+                    (alt_diff < 0 && new_altitude <= a.target_altitude_ft))
                 {
                     a.altitude_ft = a.target_altitude_ft;
-                }
-                
-                // Heading transition (turn rate: ~3 degrees per second)
-                float heading_diff = angle_difference(a.target_heading_deg, a.heading_deg);
-                if (fabs(heading_diff) > 0.5f)
-                {
-                    float turn_rate = 3.0f * dt; // 3 degrees per second
-                    if (heading_diff > 0)
-                        a.heading_deg += std::min(turn_rate, heading_diff);
-                    else
-                        a.heading_deg += std::max(-turn_rate, heading_diff);
-                    
-                    // Normalize heading
-                    a.heading_deg = fmodf(a.heading_deg + 360.0f, 360.0f);
+                    a.altitude_rate_fps = 0.0f;
                 }
                 else
                 {
-                    a.heading_deg = a.target_heading_deg;
-                }
-                
-                // Speed transition (acceleration: ~5 knots per second)
-                float speed_diff = a.target_speed_kts - a.speed_kts;
-                if (fabs(speed_diff) > 0.5f)
-                {
-                    float accel_rate = 5.0f * dt;
-                    if (speed_diff > 0)
-                        a.speed_kts += std::min(accel_rate, speed_diff);
-                    else
-                        a.speed_kts += std::max(-accel_rate, speed_diff);
-                }
-                else
-                {
-                    a.speed_kts = a.target_speed_kts;
+                    a.altitude_ft = new_altitude;
                 }
             }
-            
+            else
+            {
+                a.altitude_ft = a.target_altitude_ft;
+                a.altitude_rate_fps = 0.0f;
+            }
+
+            // Heading transition (realistic turn rate: ~2-3 degrees per second for commercial jets)
+            float heading_diff = angle_difference(a.target_heading_deg, a.heading_deg);
+            if (fabs(heading_diff) > 0.5f)
+            {
+                float turn_rate = 2.5f * dt; // 2.5 degrees per second
+                if (heading_diff > 0)
+                    a.heading_deg += std::min(turn_rate, heading_diff);
+                else
+                    a.heading_deg += std::max(-turn_rate, heading_diff);
+
+                a.heading_deg = fmodf(a.heading_deg + 360.0f, 360.0f);
+            }
+            else
+            {
+                a.heading_deg = a.target_heading_deg;
+            }
+
+            // Speed transition with smooth ease-in-out (realistic for jets)
+            float speed_diff = a.target_speed_kts - a.speed_kts;
+            if (fabs(speed_diff) > 0.5f)
+            {
+                // Calculate desired rate based on distance (smoother curve)
+                float desired_rate = 0.0f;
+                float distance_factor = sqrtf(2.0f * speed_accel * fabs(speed_diff));
+
+                if (speed_diff > 0)
+                    desired_rate = std::min(max_speed_rate, distance_factor);
+                else
+                    desired_rate = -std::min(max_speed_rate, distance_factor);
+
+                // Smoothly adjust current rate toward desired rate
+                float rate_diff = desired_rate - a.speed_rate_kps;
+                if (fabs(rate_diff) > 0.05f)
+                {
+                    float accel_step = speed_accel * dt;
+                    if (rate_diff > 0)
+                        a.speed_rate_kps += std::min(accel_step, rate_diff);
+                    else
+                        a.speed_rate_kps += std::max(-accel_step, rate_diff);
+                }
+                else
+                {
+                    a.speed_rate_kps = desired_rate;
+                }
+
+                // Apply rate to speed
+                float new_speed = a.speed_kts + a.speed_rate_kps * dt;
+
+                // Check if we've reached or passed target
+                if ((speed_diff > 0 && new_speed >= a.target_speed_kts) ||
+                    (speed_diff < 0 && new_speed <= a.target_speed_kts))
+                {
+                    a.speed_kts = a.target_speed_kts;
+                    a.speed_rate_kps = 0.0f;
+                }
+                else
+                {
+                    a.speed_kts = new_speed;
+                }
+            }
+            else
+            {
+                a.speed_kts = a.target_speed_kts;
+                a.speed_rate_kps = 0.0f;
+            }
+
             // Position update (using current speed and heading)
             float speed_kmh = a.speed_kts * 1.852f;
             float speed_kms = speed_kmh / 3600.0f;
@@ -246,6 +321,61 @@ int main(int, char**)
         draw_list->AddLine(ImVec2(center.x, center.y - radius_max), ImVec2(center.x, center.y + radius_max), col_green, 1.0f);
         draw_list->AddCircleFilled(center, 3.0f, col_green);
 
+        // Draw runways and ILS approach lines
+        ImU32 runway_color = IM_COL32(100, 150, 255, 255);
+        ImU32 ils_color = IM_COL32(80, 120, 200, 150);
+
+        // Runway 09/27 (East-West)
+        float runway_length = 60.0f; // pixels
+        float runway_width = 8.0f;
+        ImVec2 rwy_09_start(center.x - runway_length/2, center.y);
+        ImVec2 rwy_09_end(center.x + runway_length/2, center.y);
+        draw_list->AddRectFilled(
+            ImVec2(rwy_09_start.x, rwy_09_start.y - runway_width/2),
+            ImVec2(rwy_09_end.x, rwy_09_end.y + runway_width/2),
+            runway_color
+        );
+
+        // ILS approach lines for 09/27
+        float ils_length = radius_max * 0.6f;
+        draw_list->AddLine(
+            ImVec2(rwy_09_start.x - ils_length, center.y),
+            rwy_09_start,
+            ils_color, 2.0f
+        );
+        draw_list->AddLine(
+            rwy_09_end,
+            ImVec2(rwy_09_end.x + ils_length, center.y),
+            ils_color, 2.0f
+        );
+
+        // Runway 18/36 (North-South)
+        ImVec2 rwy_18_start(center.x, center.y - runway_length/2);
+        ImVec2 rwy_18_end(center.x, center.y + runway_length/2);
+        draw_list->AddRectFilled(
+            ImVec2(rwy_18_start.x - runway_width/2, rwy_18_start.y),
+            ImVec2(rwy_18_end.x + runway_width/2, rwy_18_end.y),
+            runway_color
+        );
+
+        // ILS approach lines for 18/36
+        draw_list->AddLine(
+            ImVec2(center.x, rwy_18_start.y - ils_length),
+            rwy_18_start,
+            ils_color, 2.0f
+        );
+        draw_list->AddLine(
+            rwy_18_end,
+            ImVec2(center.x, rwy_18_end.y + ils_length),
+            ils_color, 2.0f
+        );
+
+        // Runway labels
+        draw_list->AddText(ImVec2(rwy_09_start.x - 25, center.y + 12), runway_color, "27");
+        draw_list->AddText(ImVec2(rwy_09_end.x + 8, center.y + 12), runway_color, "09");
+        draw_list->AddText(ImVec2(center.x + 10, rwy_18_start.y - 5), runway_color, "36");
+        draw_list->AddText(ImVec2(center.x + 10, rwy_18_end.y - 5), runway_color, "18");
+
         // Rotating sweep line
         float time = (float)ImGui::GetTime();
         float speed = 0.8f;
@@ -279,10 +409,12 @@ int main(int, char**)
             const Aircraft& a = aircraft[i];
             ImVec2 pos = world_to_screen(a.x, a.y);
 
-            float dx = pos.x - center.x;
-            float dy = pos.y - center.y;
-            float dist = sqrtf(dx * dx + dy * dy);
-            if (dist > radius_max + 8.0f)
+            // Check if aircraft is visible on screen (with larger margin)
+            float margin = 100.0f; // Allow aircraft to be off-radar but still on screen
+            bool on_screen = (pos.x >= win_pos.x - margin && pos.x <= win_pos.x + win_size.x + margin &&
+                            pos.y >= win_pos.y - margin && pos.y <= win_pos.y + win_size.y + margin);
+
+            if (!on_screen)
                 continue;
 
             bool in_conflict = false;
@@ -363,7 +495,7 @@ int main(int, char**)
         {
             Aircraft& sel = aircraft[selected_index];
             std::string callSignLabel = "Callsign " + sel.callsign;
-            
+
             ImGui::Begin("Aircraft Control");
 
             ImGui::SetWindowFontScale(2.0f);
@@ -377,10 +509,10 @@ int main(int, char**)
                 ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.3f, 1.0f, 0.3f, 1.0f));
                 ImGui::TextWrapped("[%s]: %s", sel.callsign.c_str(), sel.last_response.c_str());
                 ImGui::PopStyleColor();
-                
+
                 if (sel.command_delay > 0.0f)
                 {
-                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f), 
+                    ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f),
                         "(executing in %.1fs...)", sel.command_delay);
                 }
             }
@@ -390,81 +522,90 @@ int main(int, char**)
 
             // Display current and target values
             ImGui::Text("Altitude: %.0f ft", sel.altitude_ft);
-            if (fabs(sel.target_altitude_ft - sel.altitude_ft) > 10.0f)
+
+            // Show pending target immediately, or active target if different from current
+            float display_target = (sel.command_delay > 0.0f) ? sel.pending_altitude_ft : sel.target_altitude_ft;
+            if (fabs(display_target - sel.altitude_ft) > 10.0f)
             {
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), 
-                    "-> %.0f ft", sel.target_altitude_ft);
+                ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f),
+                    "-> %.0f ft", display_target);
             }
 
             if (ImGui::Button("-1000 ft"))
             {
-                sel.target_altitude_ft -= 1000.0f;
-                if (sel.target_altitude_ft < 0) sel.target_altitude_ft = 0;
+                sel.pending_altitude_ft -= 1000.0f;
+                if (sel.pending_altitude_ft < 0) sel.pending_altitude_ft = 0;
                 sel.setCommand("Roger, descending one thousand feet");
             }
             ImGui::SameLine();
             if (ImGui::Button("-100 ft"))
             {
-                sel.target_altitude_ft -= 100.0f;
-                if (sel.target_altitude_ft < 0) sel.target_altitude_ft = 0;
+                sel.pending_altitude_ft -= 100.0f;
+                if (sel.pending_altitude_ft < 0) sel.pending_altitude_ft = 0;
                 sel.setCommand("Roger, descending one hundred feet");
             }
             ImGui::SameLine();
             if (ImGui::Button("+100 ft"))
             {
-                sel.target_altitude_ft += 100.0f;
+                sel.pending_altitude_ft += 100.0f;
                 sel.setCommand("Roger, climbing one hundred feet");
             }
             ImGui::SameLine();
             if (ImGui::Button("+1000 ft"))
             {
-                sel.target_altitude_ft += 1000.0f;
+                sel.pending_altitude_ft += 1000.0f;
                 sel.setCommand("Roger, climbing one thousand feet");
             }
 
             ImGui::Separator();
             ImGui::Text("Heading: %.0f°", fmodf(450.0f - sel.heading_deg, 360.0f));
-            if (fabs(angle_difference(sel.target_heading_deg, sel.heading_deg)) > 1.0f)
+
+            // Show pending target immediately, or active target if different from current
+            float display_heading = (sel.command_delay > 0.0f) ? sel.pending_heading_deg : sel.target_heading_deg;
+            if (fabs(angle_difference(display_heading, sel.heading_deg)) > 1.0f)
             {
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), 
-                    "-> %.0f°", fmodf(450.0f - sel.target_heading_deg, 360.0f));
+                ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f),
+                    "-> %.0f°", fmodf(450.0f - display_heading, 360.0f));
             }
 
             if (ImGui::Button("-5°"))
             {
-                sel.target_heading_deg += 5.0f;
-                if (sel.target_heading_deg >= 360.0f) sel.target_heading_deg -= 360.0f;
+                sel.pending_heading_deg += 5.0f;
+                if (sel.pending_heading_deg >= 360.0f) sel.pending_heading_deg -= 360.0f;
                 sel.setCommand("Roger, turning left five degrees");
             }
             ImGui::SameLine();
             if (ImGui::Button("+5°"))
             {
-                sel.target_heading_deg -= 5.0f;
-                if (sel.target_heading_deg < 0) sel.target_heading_deg += 360.0f;
+                sel.pending_heading_deg -= 5.0f;
+                if (sel.pending_heading_deg < 0) sel.pending_heading_deg += 360.0f;
                 sel.setCommand("Roger, turning right five degrees");
             }
 
             ImGui::Separator();
             ImGui::Text("Speed: %.0f kts", sel.speed_kts);
-            if (fabs(sel.target_speed_kts - sel.speed_kts) > 1.0f)
+
+            // Show pending target immediately, or active target if different from current
+            float display_speed = (sel.command_delay > 0.0f) ? sel.pending_speed_kts : sel.target_speed_kts;
+            if (fabs(display_speed - sel.speed_kts) > 1.0f)
             {
                 ImGui::SameLine();
-                ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), 
-                    "-> %.0f kts", sel.target_speed_kts);
+                ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f),
+                    "-> %.0f kts", display_speed);
             }
 
             if (ImGui::Button("-5 kts"))
             {
-                sel.target_speed_kts -= 5.0f;
-                if (sel.target_speed_kts < 0) sel.target_speed_kts = 0;
+                sel.pending_speed_kts -= 5.0f;
+                if (sel.pending_speed_kts < 0) sel.pending_speed_kts = 0;
                 sel.setCommand("Roger, reducing speed five knots");
             }
             ImGui::SameLine();
             if (ImGui::Button("+5 kts"))
             {
-                sel.target_speed_kts += 5.0f;
+                sel.pending_speed_kts += 5.0f;
                 sel.setCommand("Roger, increasing speed five knots");
             }
 
@@ -577,7 +718,7 @@ int main(int, char**)
                 if (u.rfind("FL", 0) == 0)
                 {
                     float fl = extract_number(u);
-                    selected.target_altitude_ft = fl * 100.0f;
+                    selected.pending_altitude_ft = fl * 100.0f;
                     std::ostringstream response;
                     response << "Roger, climbing to flight level " << (int)fl;
                     selected.setCommand(response.str());
@@ -586,7 +727,7 @@ int main(int, char**)
                 else if (u.rfind("HDG ", 0) == 0 || u.rfind("HEADING ", 0) == 0)
                 {
                     float hdg = extract_number(u);
-                    selected.target_heading_deg = fmodf(450.0f - hdg, 360.0f);
+                    selected.pending_heading_deg = fmodf(450.0f - hdg, 360.0f);
                     std::ostringstream response;
                     response << "Roger, turning to heading " << (int)hdg;
                     selected.setCommand(response.str());
@@ -595,7 +736,7 @@ int main(int, char**)
                 else if (u.rfind("TURN LEFT ", 0) == 0)
                 {
                     float deg = extract_number(u);
-                    selected.target_heading_deg = fmodf(selected.heading_deg + deg, 360.0f);
+                    selected.pending_heading_deg = fmodf(selected.pending_heading_deg + deg, 360.0f);
                     std::ostringstream response;
                     response << "Roger, turning left " << (int)deg << " degrees";
                     selected.setCommand(response.str());
@@ -604,7 +745,7 @@ int main(int, char**)
                 else if (u.rfind("TURN RIGHT ", 0) == 0)
                 {
                     float deg = extract_number(u);
-                    selected.target_heading_deg = fmodf(selected.heading_deg - deg + 360.0f, 360.0f);
+                    selected.pending_heading_deg = fmodf(selected.pending_heading_deg - deg + 360.0f, 360.0f);
                     std::ostringstream response;
                     response << "Roger, turning right " << (int)deg << " degrees";
                     selected.setCommand(response.str());
@@ -613,7 +754,7 @@ int main(int, char**)
                 else if (u.rfind("TURN LEFT HEADING ", 0) == 0)
                 {
                     float hdg = extract_number(u);
-                    selected.target_heading_deg = fmodf(450.0f - hdg, 360.0f);
+                    selected.pending_heading_deg = fmodf(450.0f - hdg, 360.0f);
                     std::ostringstream response;
                     response << "Roger, turning left to heading " << (int)hdg;
                     selected.setCommand(response.str());
@@ -622,7 +763,7 @@ int main(int, char**)
                 else if (u.rfind("TURN RIGHT HEADING ", 0) == 0)
                 {
                     float hdg = extract_number(u);
-                    selected.target_heading_deg = fmodf(450.0f - hdg, 360.0f);
+                    selected.pending_heading_deg = fmodf(450.0f - hdg, 360.0f);
                     std::ostringstream response;
                     response << "Roger, turning right to heading " << (int)hdg;
                     selected.setCommand(response.str());
@@ -631,7 +772,7 @@ int main(int, char**)
                 else if (u.rfind("ALT ", 0) == 0 || u.rfind("ALTITUDE ", 0) == 0)
                 {
                     float alt = extract_number(u);
-                    selected.target_altitude_ft = alt;
+                    selected.pending_altitude_ft = alt;
                     std::ostringstream response;
                     if (alt > selected.altitude_ft)
                         response << "Roger, climbing to " << (int)alt << " feet";
@@ -644,7 +785,7 @@ int main(int, char**)
                     u.rfind("CLIMB ", 0) == 0)
                 {
                     float alt = extract_number(u);
-                    selected.target_altitude_ft = alt;
+                    selected.pending_altitude_ft = alt;
                     std::ostringstream response;
                     response << "Roger, climb and maintain " << (int)alt;
                     selected.setCommand(response.str());
@@ -654,7 +795,7 @@ int main(int, char**)
                     u.rfind("DESCEND ", 0) == 0)
                 {
                     float alt = extract_number(u);
-                    selected.target_altitude_ft = alt;
+                    selected.pending_altitude_ft = alt;
                     std::ostringstream response;
                     response << "Roger, descend and maintain " << (int)alt;
                     selected.setCommand(response.str());
@@ -663,7 +804,7 @@ int main(int, char**)
                 else if (u.rfind("SPD ", 0) == 0 || u.rfind("SPEED ", 0) == 0)
                 {
                     float spd = extract_number(u);
-                    selected.target_speed_kts = spd;
+                    selected.pending_speed_kts = spd;
                     std::ostringstream response;
                     response << "Roger, adjusting speed to " << (int)spd << " knots";
                     selected.setCommand(response.str());
