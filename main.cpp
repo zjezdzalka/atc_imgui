@@ -677,7 +677,7 @@ int main(int, char**)
             draw_list->AddLine(pos, head_end, IM_COL32(200, 200, 200, 180), 1.0f);
 
             std::ostringstream ss;
-            ss << a.callsign << " " << (int)(a.altitude_ft / 100) << " " << a.squawk_code;
+            ss << a.callsign << " " << endl << "FL"<<(int)(a.altitude_ft / 100) << " " << endl << a.squawk_code; // to replace endl,
             draw_list->AddText(ImVec2(pos.x + 8.0f, pos.y - 10.0f),
                               a.is_overflight ? IM_COL32(150, 150, 150, 180) : IM_COL32(180, 240, 180, 220),
                               ss.str().c_str());
@@ -791,7 +791,7 @@ int main(int, char**)
             ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "AIRCRAFT CONTROL");
             ImGui::Separator();
 
-            ImGui::SetWindowFontScale(1.5f);
+            ImGui::SetWindowFontScale(2.0f);
             ImGui::Text("Callsign %s", sel.callsign.c_str());
             ImGui::SetWindowFontScale(1.0f);
 
