@@ -15,6 +15,7 @@
 #include <vector>
 #include <string>
 #include <iomanip>
+#include <cfloat>
 
 using namespace std;
 
@@ -73,6 +74,12 @@ struct Aircraft
     EmergencyType emergency = EMERGENCY_NONE;
     float emergency_timer = 0.0f; // Time to land
     std::string emergency_message = "";
+
+    // Crash effect
+    bool is_crashed = false;
+    float crash_timer = 0.0f;
+    float crash_x = 0.0f;
+    float crash_y = 0.0f;
 
     float target_altitude_ft = 10000.0f;
     float target_heading_deg = 0.0f;
@@ -159,7 +166,6 @@ void generateAircraft(std::vector<Aircraft>& aircrafts, Aircraft& a, const float
         a.altitude_ft = 1600.0f + (rand() % 430) * 100;
         a.squawk_code = generateSquawkCode();
 
-        // 2% chance of emergency
         if (rand() % 100 < 2)
         {
             int emergency_type = rand() % 4;
@@ -167,30 +173,30 @@ void generateAircraft(std::vector<Aircraft>& aircrafts, Aircraft& a, const float
 
             float dist_to_airport = sqrtf(a.x * a.x + a.y * a.y);
 
-            switch(a.emergency)
+            switch (a.emergency)
             {
-                case EMERGENCY_LOW_FUEL:
-                    a.emergency_timer = 300.0f + dist_to_airport * 10.0f; // 5+ min
-                    a.emergency_message = "Low fuel - requesting priority landing";
-                    a.squawk_code = "7700";
-                    break;
-                case EMERGENCY_MEDICAL:
-                    a.emergency_timer = 600.0f + dist_to_airport * 15.0f; // 10+ min
-                    a.emergency_message = "Medical emergency on board";
-                    a.squawk_code = "7700";
-                    break;
-                case EMERGENCY_ENGINE_FAILURE:
-                    a.emergency_timer = 180.0f + dist_to_airport * 5.0f; // 3+ min
-                    a.emergency_message = "Engine failure - declaring emergency";
-                    a.squawk_code = "7700";
-                    break;
-                case EMERGENCY_HYDRAULIC:
-                    a.emergency_timer = 400.0f + dist_to_airport * 12.0f; // 6+ min
-                    a.emergency_message = "Hydraulic system failure";
-                    a.squawk_code = "7700";
-                    break;
-                default:
-                    break;
+            case EMERGENCY_LOW_FUEL:
+                a.emergency_timer = 240.0f + dist_to_airport * 8.0f; // 4+ min
+                a.emergency_message = "Low fuel - requesting priority landing";
+                a.squawk_code = "7700";
+                break;
+            case EMERGENCY_MEDICAL:
+                a.emergency_timer = 480.0f + dist_to_airport * 12.0f; // 8+ min
+                a.emergency_message = "Medical emergency on board";
+                a.squawk_code = "7700";
+                break;
+            case EMERGENCY_ENGINE_FAILURE:
+                a.emergency_timer = 150.0f + dist_to_airport * 4.0f; // 2.5+ min
+                a.emergency_message = "Engine failure - declaring emergency";
+                a.squawk_code = "7700";
+                break;
+            case EMERGENCY_HYDRAULIC:
+                a.emergency_timer = 320.0f + dist_to_airport * 10.0f; // 5+ min
+                a.emergency_message = "Hydraulic system failure";
+                a.squawk_code = "7700";
+                break;
+            default:
+                break;
             }
         }
     }
@@ -209,17 +215,17 @@ int main(int, char**)
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return 1;
 
-    #if __APPLE__
-        const char* glsl_version = "#version 150";
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    #else
-        const char* glsl_version = "#version 130";
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    #endif
+#if __APPLE__
+    const char* glsl_version = "#version 150";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#else
+    const char* glsl_version = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+#endif
 
     GLFWwindow* window = glfwCreateWindow(1280, 768, "Air Traffic Controller", nullptr, nullptr);
     if (window == nullptr) return 1;
@@ -237,21 +243,17 @@ int main(int, char**)
 
     // Setup runways
     std::vector<Runway> runways;
-    runways.push_back({"09", 90.0f, -1.0f, 0.0f});
-    runways.push_back({"27", 270.0f, 1.0f, 0.0f});
-    runways.push_back({"18", 180.0f, 0.0f, -1.0f});
-    runways.push_back({"36", 0.0f, 0.0f, 1.0f});
-    runways.push_back({"04", 40.0f, -0.8f, -0.6f});
-    runways.push_back({"22", 220.0f, 0.8f, 0.6f});
+    runways.push_back({ "09", 180.0f, -1.0f, -1.0f });
+    runways.push_back({ "27", 0.0f, 1.0f, 1.0f });
 
     // Setup waypoints
     std::vector<Waypoint> waypoints;
-    waypoints.push_back({"ALPHA", 20.0f, 30.0f});
-    waypoints.push_back({"BRAVO", -25.0f, 35.0f});
-    waypoints.push_back({"CHARLIE", 35.0f, -20.0f});
-    waypoints.push_back({"DELTA", -30.0f, -25.0f});
-    waypoints.push_back({"ECHO", 40.0f, 10.0f});
-    waypoints.push_back({"FOXTROT", -15.0f, -40.0f});
+    waypoints.push_back({ "ALPHA", 20.0f, 30.0f });
+    waypoints.push_back({ "BRAVO", -25.0f, 35.0f });
+    waypoints.push_back({ "CHARLIE", 35.0f, -20.0f });
+    waypoints.push_back({ "DELTA", -30.0f, -25.0f });
+    waypoints.push_back({ "ECHO", 40.0f, 10.0f });
+    waypoints.push_back({ "FOXTROT", -15.0f, -40.0f });
 
     // Wind
     float wind_heading = (float)(rand() % 360);
@@ -278,6 +280,10 @@ int main(int, char**)
 
     const float right_panel_width = 450.0f;
 
+    // Zmienna do losowych awarii
+    float random_emergency_timer = 0.0f;
+    const float random_emergency_interval = 20.0f; // Co 20 sekund szansa na awarię
+
     while (!glfwWindowShouldClose(window))
     {
         double now = glfwGetTime();
@@ -290,9 +296,94 @@ int main(int, char**)
 
         glfwPollEvents();
 
-        // Update aircraft
-        for (auto& a : aircraft)
+        // LOSOWE AWARIE PODCZAS GRY
+        random_emergency_timer += dt;
+        if (random_emergency_timer >= random_emergency_interval)
         {
+            random_emergency_timer = 0.0f;
+
+            // 30% szansy na losową awarię co 20 sekund
+            if (rand() % 100 < 30 && !aircraft.empty())
+            {
+                // Znajdź samolot bez awarii
+                std::vector<int> candidates;
+                for (int i = 0; i < (int)aircraft.size(); ++i)
+                {
+                    if (aircraft[i].emergency == EMERGENCY_NONE &&
+                        !aircraft[i].is_overflight &&
+                        !aircraft[i].is_crashed)
+                    {
+                        candidates.push_back(i);
+                    }
+                }
+
+                if (!candidates.empty())
+                {
+                    int random_index = candidates[rand() % candidates.size()];
+                    Aircraft& random_ac = aircraft[random_index];
+
+                    int emergency_type = rand() % 4;
+                    random_ac.emergency = (EmergencyType)(emergency_type + 1);
+
+                    float dist_to_airport = sqrtf(random_ac.x * random_ac.x + random_ac.y * random_ac.y);
+
+                    switch (random_ac.emergency)
+                    {
+                    case EMERGENCY_LOW_FUEL:
+                        random_ac.emergency_timer = 240.0f + dist_to_airport * 8.0f;
+                        random_ac.emergency_message = "Low fuel - requesting priority landing";
+                        random_ac.squawk_code = "7700";
+                        break;
+                    case EMERGENCY_MEDICAL:
+                        random_ac.emergency_timer = 480.0f + dist_to_airport * 12.0f;
+                        random_ac.emergency_message = "Medical emergency on board";
+                        random_ac.squawk_code = "7700";
+                        break;
+                    case EMERGENCY_ENGINE_FAILURE:
+                        random_ac.emergency_timer = 150.0f + dist_to_airport * 4.0f;
+                        random_ac.emergency_message = "Engine failure - declaring emergency";
+                        random_ac.squawk_code = "7700";
+                        break;
+                    case EMERGENCY_HYDRAULIC:
+                        random_ac.emergency_timer = 320.0f + dist_to_airport * 10.0f;
+                        random_ac.emergency_message = "Hydraulic system failure";
+                        random_ac.squawk_code = "7700";
+                        break;
+                    default:
+                        break;
+                    }
+
+                    // Informacja dla gracza
+                    random_ac.setCommand("MAYDAY MAYDAY MAYDAY! " + random_ac.emergency_message);
+                }
+            }
+        }
+
+        // Update aircraft
+        for (size_t i = 0; i < aircraft.size(); ++i)
+        {
+            auto& a = aircraft[i];
+
+            // Jeśli samolot już się rozbił
+            if (a.is_crashed)
+            {
+                a.crash_timer -= dt;
+                if (a.crash_timer <= 0.0f)
+                {
+                    // Usuń rozbity samolot po 5 sekundach
+                    aircraft.erase(aircraft.begin() + i);
+                    i--;
+
+                    if (selected_index == (int)i)
+                        selected_index = -1;
+                    else if (selected_index > (int)i)
+                        selected_index--;
+
+                    continue;
+                }
+                continue; // Pomiń dalsze aktualizacje dla rozbitych samolotów
+            }
+
             if (a.response_timer > 0.0f)
                 a.response_timer -= dt;
 
@@ -302,8 +393,12 @@ int main(int, char**)
                 a.emergency_timer -= dt;
                 if (a.emergency_timer <= 0.0f)
                 {
-                    // Emergency critical - aircraft would crash
-                    // In real implementation, handle crash
+                    // SAMOLOT SIĘ ROZBIJA!
+                    a.is_crashed = true;
+                    a.crash_timer = 5.0f; // Czas przez który efekt będzie widoczny
+                    a.crash_x = a.x;
+                    a.crash_y = a.y;
+                    continue; // Nie kontynuuj normalnych aktualizacji
                 }
             }
 
@@ -329,7 +424,7 @@ int main(int, char**)
                     {
                         // Calculate if aircraft is on correct glideslope
                         float dist_to_rwy = sqrtf((a.x - rwy.x) * (a.x - rwy.x) +
-                                                   (a.y - rwy.y) * (a.y - rwy.y));
+                            (a.y - rwy.y) * (a.y - rwy.y));
 
                         // Standard ILS glideslope is 3 degrees
                         float expected_alt_ft = dist_to_rwy * 1000.0f * tanf(deg_to_rad(3.0f)) * 3.28084f;
@@ -473,6 +568,9 @@ int main(int, char**)
         {
             for (size_t j = i + 1; j < aircraft.size(); ++j)
             {
+                if (aircraft[i].is_crashed || aircraft[j].is_crashed)
+                    continue; // Rozbite samoloty nie powodują konfliktów
+
                 float dx = aircraft[i].x - aircraft[j].x;
                 float dy = aircraft[i].y - aircraft[j].y;
                 float d2 = dx * dx + dy * dy;
@@ -534,7 +632,7 @@ int main(int, char**)
             (ImGui::IsMouseDown(0) && shift_held) ||
             ImGui::IsMouseDown(2) ||
             ImGui::IsMouseDown(1)
-        );
+            );
 
         if (should_pan)
         {
@@ -562,12 +660,12 @@ int main(int, char**)
         draw_list->AddRectFilled(win_pos, ImVec2(win_pos.x + win_size.x, win_pos.y + win_size.y), bg, 8.0f);
 
         auto world_to_screen = [&](float wx, float wy)
-        {
-            float scale = radius_max / (radar_range_km * zoom_level);
-            float vx = wx - camera_x;
-            float vy = wy - camera_y;
-            return ImVec2(center.x + vx * scale, center.y - vy * scale);
-        };
+            {
+                float scale = radius_max / (radar_range_km * zoom_level);
+                float vx = wx - camera_x;
+                float vy = wy - camera_y;
+                return ImVec2(center.x + vx * scale, center.y - vy * scale);
+            };
 
         // Draw rings
         const int rings = 4;
@@ -636,15 +734,63 @@ int main(int, char**)
         ImVec2 c = world_to_screen(0.0f, 0.0f);
         draw_list->AddCircleFilled(c, 3.0f, col_green);
 
+        // Draw crash effects
+        for (const auto& a : aircraft)
+        {
+            if (a.is_crashed)
+            {
+                ImVec2 crash_pos = world_to_screen(a.crash_x, a.crash_y);
+
+                // Rysuj efekt eksplozji (zmieniający się w czasie)
+                float explosion_radius = 15.0f + sinf(ImGui::GetTime() * 10.0f) * 5.0f;
+
+                // Pierwszy pierścień eksplozji (czerwony)
+                draw_list->AddCircle(crash_pos, explosion_radius,
+                    IM_COL32(255, 0, 0, 200),
+                    32, 3.0f);
+
+                // Drugi pierścień (pomarańczowy)
+                draw_list->AddCircle(crash_pos, explosion_radius * 0.7f,
+                    IM_COL32(255, 100, 0, 180),
+                    32, 2.0f);
+
+                // Trzeci pierścień (żółty)
+                draw_list->AddCircle(crash_pos, explosion_radius * 0.4f,
+                    IM_COL32(255, 200, 0, 150),
+                    32, 1.5f);
+
+                // Tekst CRASH!
+                draw_list->AddText(ImVec2(crash_pos.x + 20, crash_pos.y - 20),
+                    IM_COL32(255, 50, 50, 255),
+                    "CRASH!");
+
+                // Cząstki/szczątki
+                float time = ImGui::GetTime();
+                for (int j = 0; j < 8; j++)
+                {
+                    float angle = time * 3.0f + j * (IM_PI / 4.0f);
+                    float dist = explosion_radius * 1.5f;
+                    ImVec2 particle_pos(
+                        crash_pos.x + cosf(angle) * dist,
+                        crash_pos.y + sinf(angle) * dist
+                    );
+                    draw_list->AddCircleFilled(particle_pos, 3.0f,
+                        IM_COL32(255, 150, 50, 200));
+                }
+            }
+        }
+
         // Draw aircraft
         for (size_t i = 0; i < aircraft.size(); ++i)
         {
             const Aircraft& a = aircraft[i];
+            if (a.is_crashed) continue; // Nie rysuj rozbitych samolotów
+
             ImVec2 pos = world_to_screen(a.x, a.y);
 
             float margin = 100.0f;
             bool on_screen = (pos.x >= win_pos.x - margin && pos.x <= win_pos.x + win_size.x + margin &&
-                            pos.y >= win_pos.y - margin && pos.y <= win_pos.y + win_size.y + margin);
+                pos.y >= win_pos.y - margin && pos.y <= win_pos.y + win_size.y + margin);
 
             if (!on_screen) continue;
 
@@ -676,10 +822,10 @@ int main(int, char**)
             draw_list->AddLine(pos, head_end, IM_COL32(200, 200, 200, 180), 1.0f);
 
             std::ostringstream ss;
-            ss << a.callsign << " " << endl << "FL"<<(int)(a.altitude_ft / 100) << " " << endl << a.squawk_code; // to replace endl,
+            ss << a.callsign << "\n" << "FL" << (int)(a.altitude_ft / 100) << "\n" << a.squawk_code;
             draw_list->AddText(ImVec2(pos.x + 8.0f, pos.y - 10.0f),
-                              a.is_overflight ? IM_COL32(150, 150, 150, 180) : IM_COL32(180, 240, 180, 220),
-                              ss.str().c_str());
+                a.is_overflight ? IM_COL32(150, 150, 150, 180) : IM_COL32(180, 240, 180, 220),
+                ss.str().c_str());
         }
 
         // Draw conflict lines
@@ -703,7 +849,7 @@ int main(int, char**)
             int best_idx = -1;
             for (size_t i = 0; i < aircraft.size(); ++i)
             {
-                if (aircraft[i].is_overflight) continue; // Can't select overflights
+                if (aircraft[i].is_overflight || aircraft[i].is_crashed) continue; // Can't select overflights or crashed
 
                 ImVec2 pos = world_to_screen(aircraft[i].x, aircraft[i].y);
                 float dx = io_mouse.x - pos.x;
@@ -756,6 +902,12 @@ int main(int, char**)
         ImGui::Text("Aircraft: %zu", aircraft.size());
         ImGui::Text("Conflicts: %zu", conflicts.size());
 
+        // Count crashes
+        int crashes_count = 0;
+        for (const auto& a : aircraft)
+            if (a.is_crashed) crashes_count++;
+        ImGui::Text("Crashes: %d", crashes_count);
+
         ImGui::Dummy(ImVec2(0, 5));
         ImGui::Text("Animation Speed:");
         ImGui::SliderFloat("##speed", &animation_speed, 0.1f, 5.0f, "%.1fx");
@@ -787,6 +939,15 @@ int main(int, char**)
         {
             Aircraft& sel = aircraft[selected_index];
 
+            if (sel.is_crashed)
+            {
+                ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "PLANE CRASHED");
+                ImGui::Text("This plane crashed.");
+                ImGui::Text("Explosion will vanish in %.1f seconds", sel.crash_timer);
+                ImGui::End();
+                goto render_end;
+            }
+
             ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "AIRCRAFT CONTROL");
             ImGui::Separator();
 
@@ -804,6 +965,26 @@ int main(int, char**)
                 int mins = (int)(sel.emergency_timer / 60.0f);
                 int secs = (int)(sel.emergency_timer) % 60;
                 ImGui::Text("Time to land: %02d:%02d", mins, secs);
+
+                // Pasek postępu czasu
+                float max_time = 0.0f;
+                switch (sel.emergency)
+                {
+                case EMERGENCY_LOW_FUEL: max_time = 600.0f; break;
+                case EMERGENCY_MEDICAL: max_time = 1200.0f; break;
+                case EMERGENCY_ENGINE_FAILURE: max_time = 300.0f; break;
+                case EMERGENCY_HYDRAULIC: max_time = 480.0f; break;
+                default: max_time = 600.0f;
+                }
+
+                float progress = 1.0f - (sel.emergency_timer / max_time);
+                ImGui::ProgressBar(progress, ImVec2(-1, 20));
+
+                if (sel.emergency_timer < 60.0f)
+                {
+                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
+                        "NO TIME LEFT! LAND IMMEDIATELY!");
+                }
                 ImGui::PopStyleColor();
             }
 
@@ -838,7 +1019,7 @@ int main(int, char**)
                     if (rwy.name == sel.ils_runway)
                     {
                         float dist_to_rwy = sqrtf((sel.x - rwy.x) * (sel.x - rwy.x) +
-                                                   (sel.y - rwy.y) * (sel.y - rwy.y));
+                            (sel.y - rwy.y) * (sel.y - rwy.y));
                         float expected_alt_ft = dist_to_rwy * 1000.0f * tanf(deg_to_rad(3.0f)) * 3.28084f;
                         float deviation = sel.altitude_ft - expected_alt_ft;
 
@@ -1010,12 +1191,12 @@ int main(int, char**)
                 for (char c : cmd) u += (char)toupper(c);
 
                 auto extract_number = [&](const std::string& s) -> float
-                {
-                    for (int i = 0; i < (int)s.size(); i++)
-                        if ((s[i] >= '0' && s[i] <= '9'))
-                            return atof(s.c_str() + i);
-                    return 0.0f;
-                };
+                    {
+                        for (int i = 0; i < (int)s.size(); i++)
+                            if ((s[i] >= '0' && s[i] <= '9'))
+                                return atof(s.c_str() + i);
+                        return 0.0f;
+                    };
 
                 // REMOVE AIRCRAFT command
                 if (u.find("REMOVE") != std::string::npos &&
@@ -1123,7 +1304,8 @@ int main(int, char**)
 
         ImGui::End();
 
-        // Renderja nie ma
+    render_end:
+        // Render
         ImGui::Render();
         glViewport(0, 0, display_w, display_h);
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
