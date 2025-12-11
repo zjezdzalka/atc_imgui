@@ -514,7 +514,7 @@ int main(int, char**)
             float wheel = io.MouseWheel;
             if (wheel != 0.0f)
             {
-                float zoom_factor = 1.0f + wheel * 0.15f;
+                float zoom_factor = 1.0f - wheel * 0.15f;
                 float new_zoom = zoom_level * zoom_factor;
                 new_zoom = std::max(0.2f, std::min(5.0f, new_zoom));
 
@@ -594,7 +594,6 @@ int main(int, char**)
             ImVec2 rwy_pos = world_to_screen(rwy.x, rwy.y);
 
             // Draw runway marker
-            draw_list->AddCircleFilled(rwy_pos, 8.0f, runway_color);
             draw_list->AddText(ImVec2(rwy_pos.x + 12, rwy_pos.y - 8), runway_color, rwy.name.c_str());
 
             // Draw ILS localizer (6km line in approach direction)
@@ -771,7 +770,7 @@ int main(int, char**)
         ImGui::BulletText("Two-finger scroll: Zoom");
         ImGui::BulletText("Shift + Drag: Pan");
         ImGui::BulletText("Right Click Drag: Pan");
-        ImGui::Text("Zoom: %.1fx", zoom_level);
+        ImGui::Text("Zoom: %.1fx", 1.0f / zoom_level);
         ImGui::Text("Offset: (%.1f, %.1f) km", camera_x, camera_y);
 
         if (ImGui::Button("Reset View", ImVec2(-1, 0)))
