@@ -126,6 +126,17 @@ struct Aircraft
         command_delay = delay;
         has_pending_command = true;
     }
+
+    void setImmediateResponse(const std::string& response, float duration = 3.0f)
+    {
+        if (is_overflight) return;
+
+        last_response = response;
+        response_timer = duration;
+
+        command_delay = 0.0f;
+        has_pending_command = false;
+    }
 };
 
 static float angle_difference(float target, float current)
@@ -143,7 +154,8 @@ std::string generateSquawkCode()
     return ss.str();
 }
 
-void generateAircraft(std::vector<Aircraft>& aircrafts, Aircraft& a, const float radar_range_km, const int i) {
+void generateAircraft(std::vector<Aircraft>& aircrafts, Aircraft& a, const float radar_range_km, const int i)
+{
     std::ostringstream ss;
     ss << "AC" << std::setw(2) << std::setfill('0') << (i + 1);
     a.callsign = ss.str();
@@ -157,13 +169,13 @@ void generateAircraft(std::vector<Aircraft>& aircrafts, Aircraft& a, const float
     if (rand() % 100 < 10)
     {
         a.is_overflight = true;
-        a.altitude_ft = 30000.0f + (rand() % 100) * 100; // 30000-40000 ft
+        a.altitude_ft = 32000.0f + (rand() % 111) * 100; // 32000-43000 ft
         a.squawk_code = "----"; // No transponder contact
     }
     else
     {
         a.is_overflight = false;
-        a.altitude_ft = 1600.0f + (rand() % 430) * 100;
+        a.altitude_ft = 1600.0f + (rand() % 215) * 100; // 1600-23000 ft
         a.squawk_code = generateSquawkCode();
 
         if (rand() % 100 < 2)
@@ -243,17 +255,17 @@ int main(int, char**)
 
     // Setup runways
     std::vector<Runway> runways;
-    runways.push_back({ "09", 180.0f, -1.0f, -1.0f });
-    runways.push_back({ "27", 0.0f, 1.0f, 1.0f });
+    runways.push_back({"09", 180.0f, -1.0f, -1.0f});
+    runways.push_back({"27", 0.0f, 1.0f, 1.0f});
 
     // Setup waypoints
     std::vector<Waypoint> waypoints;
-    waypoints.push_back({ "ALPHA", 20.0f, 30.0f });
-    waypoints.push_back({ "BRAVO", -25.0f, 35.0f });
-    waypoints.push_back({ "CHARLIE", 35.0f, -20.0f });
-    waypoints.push_back({ "DELTA", -30.0f, -25.0f });
-    waypoints.push_back({ "ECHO", 40.0f, 10.0f });
-    waypoints.push_back({ "FOXTROT", -15.0f, -40.0f });
+    waypoints.push_back({"ALPHA", 20.0f, 30.0f});
+    waypoints.push_back({"BRAVO", -25.0f, 35.0f});
+    waypoints.push_back({"CHARLIE", 35.0f, -20.0f});
+    waypoints.push_back({"DELTA", -30.0f, -25.0f});
+    waypoints.push_back({"ECHO", 40.0f, 10.0f});
+    waypoints.push_back({"FOXTROT", -15.0f, -40.0f});
 
     // Wind
     float wind_heading = (float)(rand() % 360);
@@ -632,7 +644,7 @@ int main(int, char**)
             (ImGui::IsMouseDown(0) && shift_held) ||
             ImGui::IsMouseDown(2) ||
             ImGui::IsMouseDown(1)
-            );
+        );
 
         if (should_pan)
         {
@@ -660,12 +672,12 @@ int main(int, char**)
         draw_list->AddRectFilled(win_pos, ImVec2(win_pos.x + win_size.x, win_pos.y + win_size.y), bg, 8.0f);
 
         auto world_to_screen = [&](float wx, float wy)
-            {
-                float scale = radius_max / (radar_range_km * zoom_level);
-                float vx = wx - camera_x;
-                float vy = wy - camera_y;
-                return ImVec2(center.x + vx * scale, center.y - vy * scale);
-            };
+        {
+            float scale = radius_max / (radar_range_km * zoom_level);
+            float vx = wx - camera_x;
+            float vy = wy - camera_y;
+            return ImVec2(center.x + vx * scale, center.y - vy * scale);
+        };
 
         // Draw rings
         const int rings = 4;
@@ -746,23 +758,23 @@ int main(int, char**)
 
                 // Pierwszy pierścień eksplozji (czerwony)
                 draw_list->AddCircle(crash_pos, explosion_radius,
-                    IM_COL32(255, 0, 0, 200),
-                    32, 3.0f);
+                                     IM_COL32(255, 0, 0, 200),
+                                     32, 3.0f);
 
                 // Drugi pierścień (pomarańczowy)
                 draw_list->AddCircle(crash_pos, explosion_radius * 0.7f,
-                    IM_COL32(255, 100, 0, 180),
-                    32, 2.0f);
+                                     IM_COL32(255, 100, 0, 180),
+                                     32, 2.0f);
 
                 // Trzeci pierścień (żółty)
                 draw_list->AddCircle(crash_pos, explosion_radius * 0.4f,
-                    IM_COL32(255, 200, 0, 150),
-                    32, 1.5f);
+                                     IM_COL32(255, 200, 0, 150),
+                                     32, 1.5f);
 
                 // Tekst CRASH!
                 draw_list->AddText(ImVec2(crash_pos.x + 20, crash_pos.y - 20),
-                    IM_COL32(255, 50, 50, 255),
-                    "CRASH!");
+                                   IM_COL32(255, 50, 50, 255),
+                                   "CRASH!");
 
                 // Cząstki/szczątki
                 float time = ImGui::GetTime();
@@ -775,7 +787,7 @@ int main(int, char**)
                         crash_pos.y + sinf(angle) * dist
                     );
                     draw_list->AddCircleFilled(particle_pos, 3.0f,
-                        IM_COL32(255, 150, 50, 200));
+                                               IM_COL32(255, 150, 50, 200));
                 }
             }
         }
@@ -824,8 +836,8 @@ int main(int, char**)
             std::ostringstream ss;
             ss << a.callsign << "\n" << "FL" << (int)(a.altitude_ft / 100) << "\n" << a.squawk_code;
             draw_list->AddText(ImVec2(pos.x + 8.0f, pos.y - 10.0f),
-                a.is_overflight ? IM_COL32(150, 150, 150, 180) : IM_COL32(180, 240, 180, 220),
-                ss.str().c_str());
+                               a.is_overflight ? IM_COL32(150, 150, 150, 180) : IM_COL32(180, 240, 180, 220),
+                               ss.str().c_str());
         }
 
         // Draw conflict lines
@@ -842,14 +854,16 @@ int main(int, char**)
 
         // Selection
         ImVec2 io_mouse = ImGui::GetMousePos();
-        bool clicked = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseClicked(0) && !shift_held;
+        bool clicked = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseClicked(0) && !
+            shift_held;
         if (clicked)
         {
             float best_d = 999999.0f;
             int best_idx = -1;
             for (size_t i = 0; i < aircraft.size(); ++i)
             {
-                if (aircraft[i].is_overflight || aircraft[i].is_crashed) continue; // Can't select overflights or crashed
+                if (aircraft[i].is_overflight || aircraft[i].is_crashed) continue;
+                // Can't select overflights or crashed
 
                 ImVec2 pos = world_to_screen(aircraft[i].x, aircraft[i].y);
                 float dx = io_mouse.x - pos.x;
@@ -970,10 +984,14 @@ int main(int, char**)
                 float max_time = 0.0f;
                 switch (sel.emergency)
                 {
-                case EMERGENCY_LOW_FUEL: max_time = 600.0f; break;
-                case EMERGENCY_MEDICAL: max_time = 1200.0f; break;
-                case EMERGENCY_ENGINE_FAILURE: max_time = 300.0f; break;
-                case EMERGENCY_HYDRAULIC: max_time = 480.0f; break;
+                case EMERGENCY_LOW_FUEL: max_time = 600.0f;
+                    break;
+                case EMERGENCY_MEDICAL: max_time = 1200.0f;
+                    break;
+                case EMERGENCY_ENGINE_FAILURE: max_time = 300.0f;
+                    break;
+                case EMERGENCY_HYDRAULIC: max_time = 480.0f;
+                    break;
                 default: max_time = 600.0f;
                 }
 
@@ -983,7 +1001,7 @@ int main(int, char**)
                 if (sel.emergency_timer < 60.0f)
                 {
                     ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                        "NO TIME LEFT! LAND IMMEDIATELY!");
+                                       "NO TIME LEFT! LAND IMMEDIATELY!");
                 }
                 ImGui::PopStyleColor();
             }
@@ -999,7 +1017,7 @@ int main(int, char**)
                 if (sel.command_delay > 0.0f)
                 {
                     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f),
-                        "(executing in %.1fs...)", sel.command_delay);
+                                       "(executing in %.1fs...)", sel.command_delay);
                 }
             }
 
@@ -1011,7 +1029,7 @@ int main(int, char**)
             if (sel.ils_active)
             {
                 ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f),
-                    "Active: RWY %s", sel.ils_runway.c_str());
+                                   "Active: RWY %s", sel.ils_runway.c_str());
 
                 // Calculate glideslope deviation
                 for (const auto& rwy : runways)
@@ -1058,7 +1076,7 @@ int main(int, char**)
 
             ImGui::Separator();
 
-            // Altitude controls
+            // --- Altitude Controls ---
             ImGui::Text("Altitude: %.0f ft", sel.altitude_ft);
             float display_target = (sel.command_delay > 0.0f) ? sel.pending_altitude_ft : sel.target_altitude_ft;
             if (fabs(display_target - sel.altitude_ft) > 10.0f)
@@ -1067,44 +1085,94 @@ int main(int, char**)
                 ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "-> %.0f ft", display_target);
             }
 
+            const float ALT_MIN = 0.0f;
+            const float ALT_MAX = 23000.0f;
+
             if (ImGui::Button("-1000##alt1", ImVec2(100, 0)))
             {
-                float old = sel.altitude_ft;
-                sel.pending_altitude_ft = std::max(0.0f, sel.pending_altitude_ft - 1000.0f);
-                float diff = fabs(sel.pending_altitude_ft - old);
-                std::ostringstream r;
-                r << "Roger, descending " << (int)diff << " feet";
-                sel.setCommand(r.str());
+                float old = sel.pending_altitude_ft;
+                sel.pending_altitude_ft = std::max(ALT_MIN, sel.pending_altitude_ft - 1000.0f);
+                float diff = old - sel.pending_altitude_ft;
+
+                if (diff > 0)
+                {
+                    std::ostringstream r;
+                    if (sel.pending_altitude_ft == ALT_MIN && old - 1000.0f < ALT_MIN)
+                        r << "Warning: cannot descend below 0 ft, descending only " << (int)diff << " ft";
+                    else
+                        r << "Roger, descending " << (int)diff << " ft";
+                    sel.setCommand(r.str(), 5.0f);
+                }
+                else
+                {
+                    sel.setImmediateResponse("Unable, minimum altitude is 0 feet", 3.0f);
+                }
             }
             ImGui::SameLine();
+
             if (ImGui::Button("-100##alt2", ImVec2(100, 0)))
             {
-                float old = sel.altitude_ft;
-                sel.pending_altitude_ft = std::max(0.0f, sel.pending_altitude_ft - 100.0f);
-                float diff = fabs(sel.pending_altitude_ft - old);
-                std::ostringstream r;
-                r << "Roger, descending " << (int)diff << " feet";
-                sel.setCommand(r.str());
+                float old = sel.pending_altitude_ft;
+                sel.pending_altitude_ft = std::max(ALT_MIN, sel.pending_altitude_ft - 100.0f);
+                float diff = old - sel.pending_altitude_ft;
+
+                if (diff > 0)
+                {
+                    std::ostringstream r;
+                    if (sel.pending_altitude_ft == ALT_MIN && old - 100.0f < ALT_MIN)
+                        r << "Warning: cannot descend below 0 ft, descending only " << (int)diff << " ft";
+                    else
+                        r << "Roger, descending " << (int)diff << " ft";
+                    sel.setCommand(r.str(), 5.0f);
+                }
+                else
+                {
+                    sel.setImmediateResponse("Unable, minimum altitude is 0 feet", 3.0f);
+                }
             }
             ImGui::SameLine();
+
             if (ImGui::Button("+100##alt3", ImVec2(100, 0)))
             {
-                float old = sel.altitude_ft;
-                sel.pending_altitude_ft += 100.0f;
-                float diff = fabs(sel.pending_altitude_ft - old);
-                std::ostringstream r;
-                r << "Roger, climbing " << (int)diff << " feet";
-                sel.setCommand(r.str());
+                float old = sel.pending_altitude_ft;
+                sel.pending_altitude_ft = std::min(ALT_MAX, sel.pending_altitude_ft + 100.0f);
+                float diff = sel.pending_altitude_ft - old;
+
+                if (diff > 0)
+                {
+                    std::ostringstream r;
+                    if (sel.pending_altitude_ft == ALT_MAX && old + 100.0f > ALT_MAX)
+                        r << "Warning: cannot ascend over 23000 ft, climbing only " << (int)diff << " ft";
+                    else
+                        r << "Roger, climbing " << (int)diff << " ft";
+                    sel.setCommand(r.str(), 5.0f);
+                }
+                else
+                {
+                    sel.setImmediateResponse("Unable, maximum altitude is 23000 feet", 3.0f);
+                }
             }
             ImGui::SameLine();
+
             if (ImGui::Button("+1000##alt4", ImVec2(100, 0)))
             {
-                float old = sel.altitude_ft;
-                sel.pending_altitude_ft += 1000.0f;
-                float diff = fabs(sel.pending_altitude_ft - old);
-                std::ostringstream r;
-                r << "Roger, climbing " << (int)diff << " feet";
-                sel.setCommand(r.str());
+                float old = sel.pending_altitude_ft;
+                sel.pending_altitude_ft = std::min(ALT_MAX, sel.pending_altitude_ft + 1000.0f);
+                float diff = sel.pending_altitude_ft - old;
+
+                if (diff > 0)
+                {
+                    std::ostringstream r;
+                    if (sel.pending_altitude_ft == ALT_MAX && old + 1000.0f > ALT_MAX)
+                        r << "Warning: cannot ascend over 23000 ft, climbing only " << (int)diff << " ft";
+                    else
+                        r << "Roger, climbing " << (int)diff << " ft";
+                    sel.setCommand(r.str(), 5.0f);
+                }
+                else
+                {
+                    sel.setImmediateResponse("Unable, maximum altitude is 23000 feet", 3.0f);
+                }
             }
 
             ImGui::Separator();
@@ -1191,12 +1259,12 @@ int main(int, char**)
                 for (char c : cmd) u += (char)toupper(c);
 
                 auto extract_number = [&](const std::string& s) -> float
-                    {
-                        for (int i = 0; i < (int)s.size(); i++)
-                            if ((s[i] >= '0' && s[i] <= '9'))
-                                return atof(s.c_str() + i);
-                        return 0.0f;
-                    };
+                {
+                    for (int i = 0; i < (int)s.size(); i++)
+                        if ((s[i] >= '0' && s[i] <= '9'))
+                            return atof(s.c_str() + i);
+                    return 0.0f;
+                };
 
                 // REMOVE AIRCRAFT command
                 if (u.find("REMOVE") != std::string::npos &&
