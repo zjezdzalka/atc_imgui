@@ -6,11 +6,13 @@
 #include "function/aircraft.h"
 #include "function/emergency.h"
 #include "function/utils.h"
+#include "function/runway.h"
+#include "function/waypoint.h"
+#include "function/draw.h"
 
+#include <GLFW/glfw3.h>
 #include <cstdio>
 #include <cmath>
-#include <GLFW/glfw3.h>
-
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
@@ -21,10 +23,6 @@
 #include <cfloat>
 
 using namespace std;
-
-#ifndef IM_PI
-#define IM_PI 3.14159265358979323846f
-#endif
 
 int main(int, char**)
 {
@@ -60,32 +58,18 @@ int main(int, char**)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Setup runways
-    std::vector<Runway> runways;
-    runways.push_back({"09", 180.0f, -1.0f, -1.0f});
-    runways.push_back({"27", 0.0f, 1.0f, 1.0f});
+    std::vector<Runway> runways = createRunways();
 
     // Setup waypoints
-    std::vector<Waypoint> waypoints;
-    waypoints.push_back({"ALPHA", 20.0f, 30.0f});
-    waypoints.push_back({"BRAVO", -25.0f, 35.0f});
-    waypoints.push_back({"CHARLIE", 35.0f, -20.0f});
-    waypoints.push_back({"DELTA", -30.0f, -25.0f});
-    waypoints.push_back({"ECHO", 40.0f, 10.0f});
-    waypoints.push_back({"FOXTROT", -15.0f, -40.0f});
+    std::vector<Waypoint> waypoints = createWaypoints();
 
     // Wind
     float wind_heading = (float)(rand() % 360);
     float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
 
     //generateInitialAircrafts
-    std::vector<Aircraft> aircraft;
     const int initial_count = 12;
-    for (int i = 0; i < initial_count; ++i)
-    {
-        Aircraft a;
-        generateAircraft(aircraft, a, radar_range_km, i);
-        aircraft.push_back(a);
-    }
+    std::vector<Aircraft> aircraft = generateInitialAircrafts(initial_count, radar_range_km);
     int selected_index = -1;
 
     float camera_x = 0.0f;
@@ -394,177 +378,28 @@ int main(int, char**)
         };
 
         // Draw rings
-        const int rings = 4;
-        for (int i = 1; i <= rings; ++i)
-        {
-            float km_radius = (radar_range_km * i) / rings;
-            ImVec2 p0 = world_to_screen(0, 0);
-            ImVec2 p1 = world_to_screen(km_radius, 0);
-            float screen_r = fabs(p1.x - p0.x);
-            draw_list->AddCircle(p0, screen_r, col_green, 128, 1.0f);
-
-            float range_nm = km_radius * 0.539957f;
-            std::ostringstream ss;
-            ss << (int)range_nm << " nm";
-            draw_list->AddText(ImVec2(p0.x + screen_r - 30, p0.y - 12), col_green, ss.str().c_str());
-        }
+        DrawRadarRings(draw_list, radar_range_km, world_to_screen, col_green);
 
         // Draw runways and ILS
-        ImU32 runway_color = IM_COL32(100, 150, 255, 255);
-        ImU32 ils_color = IM_COL32(80, 120, 200, 150);
-
-        for (const auto& rwy : runways)
-        {
-            ImVec2 rwy_pos = world_to_screen(rwy.x, rwy.y);
-
-            // Draw runway marker
-            draw_list->AddText(ImVec2(rwy_pos.x + 12, rwy_pos.y - 8), runway_color, rwy.name.c_str());
-
-            // Draw ILS localizer (6km line in approach direction)
-            float ils_angle = deg_to_rad(rwy.heading_deg + 180.0f); // Opposite direction
-            float ils_len = 6.0f;
-            ImVec2 ils_end = world_to_screen(
-                rwy.x + cosf(ils_angle) * ils_len,
-                rwy.y + sinf(ils_angle) * ils_len
-            );
-            draw_list->AddLine(ils_end, rwy_pos, ils_color, 2.0f);
-        }
+        DrawRunwaysAndILS(draw_list, runways, world_to_screen);
 
         // Draw waypoints
-        ImU32 waypoint_color = IM_COL32(255, 200, 100, 200);
-        for (const auto& wp : waypoints)
-        {
-            ImVec2 wp_pos = world_to_screen(wp.x, wp.y);
-            draw_list->AddCircle(wp_pos, 6.0f, waypoint_color, 12, 2.0f);
-            draw_list->AddText(ImVec2(wp_pos.x + 10, wp_pos.y - 8), waypoint_color, wp.name.c_str());
-        }
+        DrawWaypoints(draw_list, waypoints, world_to_screen);
 
         // Radar sweep
-        float sweep_angle = fmodf(ImGui::GetTime() * 0.8f * animation_speed, 2.0f * IM_PI);
-        float sweep_length_km = radar_range_km;
-        float sx = cosf(sweep_angle) * sweep_length_km;
-        float sy = sinf(sweep_angle) * sweep_length_km;
-        ImVec2 sweep_center = world_to_screen(0.0f, 0.0f);
-        ImVec2 sweep_tip = world_to_screen(sx, sy);
-        ImU32 sweep_color = IM_COL32(120, 255, 120, 255);
-        draw_list->AddLine(sweep_center, sweep_tip, sweep_color, 2.0f);
+        DrawRadarSweep(draw_list, radar_range_km, animation_speed, world_to_screen);
 
         // Draw axes
-        float axis_len_km = radar_range_km;
-        ImVec2 left = world_to_screen(-axis_len_km, 0.0f);
-        ImVec2 right = world_to_screen(+axis_len_km, 0.0f);
-        draw_list->AddLine(left, right, col_green, 1.0f);
-        ImVec2 down = world_to_screen(0.0f, -axis_len_km);
-        ImVec2 up = world_to_screen(0.0f, +axis_len_km);
-        draw_list->AddLine(down, up, col_green, 1.0f);
-        ImVec2 c = world_to_screen(0.0f, 0.0f);
-        draw_list->AddCircleFilled(c, 3.0f, col_green);
+        DrawRadarAxes(draw_list, radar_range_km, world_to_screen, col_green);
 
         // Draw crash effects
-        for (const auto& a : aircraft)
-        {
-            if (a.is_crashed)
-            {
-                ImVec2 crash_pos = world_to_screen(a.crash_x, a.crash_y);
-
-                // Rysuj efekt eksplozji (zmieniający się w czasie)
-                float explosion_radius = 15.0f + sinf(ImGui::GetTime() * 10.0f) * 5.0f;
-
-                // Pierwszy pierścień eksplozji (czerwony)
-                draw_list->AddCircle(crash_pos, explosion_radius,
-                                     IM_COL32(255, 0, 0, 200),
-                                     32, 3.0f);
-
-                // Drugi pierścień (pomarańczowy)
-                draw_list->AddCircle(crash_pos, explosion_radius * 0.7f,
-                                     IM_COL32(255, 100, 0, 180),
-                                     32, 2.0f);
-
-                // Trzeci pierścień (żółty)
-                draw_list->AddCircle(crash_pos, explosion_radius * 0.4f,
-                                     IM_COL32(255, 200, 0, 150),
-                                     32, 1.5f);
-
-                // Tekst CRASH!
-                draw_list->AddText(ImVec2(crash_pos.x + 20, crash_pos.y - 20),
-                                   IM_COL32(255, 50, 50, 255),
-                                   "CRASH!");
-
-                // Cząstki/szczątki
-                float time = ImGui::GetTime();
-                for (int j = 0; j < 8; j++)
-                {
-                    float angle = time * 3.0f + j * (IM_PI / 4.0f);
-                    float dist = explosion_radius * 1.5f;
-                    ImVec2 particle_pos(
-                        crash_pos.x + cosf(angle) * dist,
-                        crash_pos.y + sinf(angle) * dist
-                    );
-                    draw_list->AddCircleFilled(particle_pos, 3.0f,
-                                               IM_COL32(255, 150, 50, 200));
-                }
-            }
-        }
+        DrawCrashEffects(draw_list, aircraft, world_to_screen);
 
         // Draw aircraft
-        for (size_t i = 0; i < aircraft.size(); ++i)
-        {
-            const Aircraft& a = aircraft[i];
-            if (a.is_crashed) continue; // Nie rysuj rozbitych samolotów
-
-            ImVec2 pos = world_to_screen(a.x, a.y);
-
-            float margin = 100.0f;
-            bool on_screen = (pos.x >= win_pos.x - margin && pos.x <= win_pos.x + win_size.x + margin &&
-                pos.y >= win_pos.y - margin && pos.y <= win_pos.y + win_size.y + margin);
-
-            if (!on_screen) continue;
-
-            bool in_conflict = false;
-            for (auto& cf : conflicts)
-            {
-                if ((int)i == cf.first || (int)i == cf.second)
-                {
-                    in_conflict = true;
-                    break;
-                }
-            }
-
-            ImU32 blip_col;
-            if (a.emergency != EMERGENCY_NONE)
-                blip_col = IM_COL32(255, 0, 0, 255); // Red for emergency
-            else if (a.is_overflight)
-                blip_col = IM_COL32(150, 150, 150, 180); // Gray for overflight
-            else if (in_conflict)
-                blip_col = IM_COL32(255, 64, 64, 255);
-            else
-                blip_col = IM_COL32(255, 255, 0, 255);
-
-            float blip_radius = (selected_index == (int)i) ? 6.0f : 4.0f;
-            draw_list->AddCircleFilled(pos, blip_radius, blip_col);
-
-            float head_rad = deg_to_rad(a.heading_deg);
-            ImVec2 head_end(pos.x + cosf(head_rad) * 12.0f, pos.y - sinf(head_rad) * 12.0f);
-            draw_list->AddLine(pos, head_end, IM_COL32(200, 200, 200, 180), 1.0f);
-
-            std::ostringstream ss;
-            ss << a.callsign << "\n" << "FL" << (int)(a.altitude_ft / 100) << "\n" << a.squawk_code;
-            draw_list->AddText(ImVec2(pos.x + 8.0f, pos.y - 10.0f),
-                               a.is_overflight ? IM_COL32(150, 150, 150, 180) : IM_COL32(180, 240, 180, 220),
-                               ss.str().c_str());
-        }
+        DrawAircraft(draw_list, aircraft, conflicts, world_to_screen, selected_index, win_pos, win_size);
 
         // Draw conflict lines
-        for (auto& cf : conflicts)
-        {
-            const Aircraft& a = aircraft[cf.first];
-            const Aircraft& b = aircraft[cf.second];
-            ImVec2 pa = world_to_screen(a.x, a.y);
-            ImVec2 pb = world_to_screen(b.x, b.y);
-            draw_list->AddLine(pa, pb, IM_COL32(255, 80, 80, 200), 2.0f);
-            ImVec2 mid((pa.x + pb.x) * 0.5f, (pa.y + pb.y) * 0.5f);
-            draw_list->AddText(ImVec2(mid.x + 4, mid.y + 4), IM_COL32(255, 120, 120, 220), "CONFLICT");
-        }
+        DrawConflictLines(draw_list, aircraft, conflicts, world_to_screen);
 
         // Selection
         ImVec2 io_mouse = ImGui::GetMousePos();

@@ -37,6 +37,12 @@ add_library(imgui_build
         function/utils.cpp
         function/utils.h
         function/aircraft.cpp
+        function/runway.cpp
+        function/runway.h
+        function/waypoint.cpp
+        function/waypoint.h
+        function/draw.cpp
+        function/draw.h
 )
 
 # Dodaj ścieżki do nagłówków ImGui i GLFW (to właśnie naprawia Twój błąd!)
@@ -55,7 +61,13 @@ add_executable(imgui_radar main.cpp
         function/utils.cpp
         function/utils.h
         function/emergency_types.h
-        function/aircraft.cpp)
+        function/aircraft.cpp
+        function/runway.cpp
+        function/runway.h
+        function/waypoint.cpp
+        function/waypoint.h
+        function/draw.cpp
+        function/draw.h)
 
 # Linkowanie
 target_link_libraries(imgui_radar imgui_build glfw)
