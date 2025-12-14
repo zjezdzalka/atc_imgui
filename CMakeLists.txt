@@ -30,6 +30,13 @@ add_library(imgui_build
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_glfw.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
+        function/aircraft.h
+        function/emergency.cpp
+        function/emergency.h
+        function/emergency_types.h
+        function/utils.cpp
+        function/utils.h
+        function/aircraft.cpp
 )
 
 # Dodaj ścieżki do nagłówków ImGui i GLFW (to właśnie naprawia Twój błąd!)
@@ -40,7 +47,15 @@ target_include_directories(imgui_build PUBLIC
 )
 
 # Twój plik źródłowy
-add_executable(imgui_radar main.cpp)
+add_executable(imgui_radar main.cpp
+        function/aircraft.h
+        function/aircraft.cpp
+        function/emergency.cpp
+        function/emergency.h
+        function/utils.cpp
+        function/utils.h
+        function/emergency_types.h
+        function/aircraft.cpp)
 
 # Linkowanie
 target_link_libraries(imgui_radar imgui_build glfw)
