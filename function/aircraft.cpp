@@ -128,3 +128,17 @@ void generateAircraft(std::vector<Aircraft>& aircraft,
 
     a.initTargets();
 }
+
+std::vector<Aircraft> generateInitialAircrafts(int count, float radar_range_km)
+{
+    std::vector<Aircraft> aircraftList;
+
+    for (int i = 0; i < count; ++i)
+    {
+        Aircraft a;
+        generateAircraft(aircraftList, a, radar_range_km, i);
+        aircraftList.push_back(a);
+    }
+
+    return aircraftList;
+}
