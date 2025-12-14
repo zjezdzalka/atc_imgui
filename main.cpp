@@ -424,30 +424,6 @@ int main(int, char**)
                 }
             }
 
-            // ILS approach guidance
-            if (a.ils_active && !a.ils_runway.empty())
-            {
-                // Find the runway
-                for (const auto& rwy : runways)
-                {
-                    if (rwy.name == a.ils_runway)
-                    {
-                        // Calculate if aircraft is on correct glideslope
-                        float dist_to_rwy = sqrtf((a.x - rwy.x) * (a.x - rwy.x) +
-                            (a.y - rwy.y) * (a.y - rwy.y));
-
-                        // Standard ILS glideslope is 3 degrees
-                        float expected_alt_ft = dist_to_rwy * 1000.0f * tanf(deg_to_rad(3.0f)) * 3.28084f;
-
-                        // Store deviation for display
-                        float deviation = a.altitude_ft - expected_alt_ft;
-
-                        // Could auto-adjust altitude here if desired
-                        break;
-                    }
-                }
-            }
-
             const float max_alt_rate = 33.33f; // ft/s (~2000 fpm)
             const float alt_accel = 4.0f; // ft/s²
             const float max_speed_rate = 3.0f;
@@ -1082,8 +1058,6 @@ int main(int, char**)
 
             const float ALT_MAX = 23000.0f;
             const float ALT_MIN = 1600.0f;
-            const float MSG_DURATION = 5.0f;
-
 
             if (ImGui::Button("-1000##alt1", ImVec2(100, 0)))
             {
