@@ -3,6 +3,9 @@
 #include "imgui_impl_opengl3.h"
 
 #include "function/glfw.cpp"
+#include "function/aircraft.h"
+#include "function/emergency.h"
+#include "function/utils.h"
 
 #include <cstdio>
 #include <cmath>
@@ -22,203 +25,6 @@ using namespace std;
 #ifndef IM_PI
 #define IM_PI 3.14159265358979323846f
 #endif
-
-static float deg_to_rad(float d) { return d * (IM_PI / 180.0f); }
-static float rad_to_deg(float r) { return r * (180.0f / IM_PI); }
-
-static constexpr float radar_range_km = 80.0f;
-
-// Runway data structure
-struct Runway
-{
-    std::string name;
-    float heading_deg; // true heading
-    float x, y; // position in km
-};
-
-// Waypoint structure
-struct Waypoint
-{
-    std::string name;
-    float x, y; // position in km
-};
-
-// Emergency types
-enum EmergencyType
-{
-    EMERGENCY_NONE,
-    EMERGENCY_LOW_FUEL,
-    EMERGENCY_MEDICAL,
-    EMERGENCY_ENGINE_FAILURE,
-    EMERGENCY_HYDRAULIC
-};
-
-struct Aircraft
-{
-    std::string callsign;
-    float x = 0.0f;
-    float y = 0.0f;
-    float altitude_ft = 10000.0f;
-    float heading_deg = 0.0f;
-    float speed_kts = 250.0f;
-    bool selected = false;
-
-    std::string squawk_code = "1200";
-    bool is_overflight = false; // High altitude, non-contactable
-
-    // ILS approach
-    bool ils_active = false;
-    std::string ils_runway = "";
-
-    // Emergency
-    EmergencyType emergency = EMERGENCY_NONE;
-    float emergency_timer = 0.0f; // Time to land
-    std::string emergency_message = "";
-
-    // Crash effect
-    bool is_crashed = false;
-    float crash_timer = 0.0f;
-    float crash_x = 0.0f;
-    float crash_y = 0.0f;
-
-    float target_altitude_ft = 10000.0f;
-    float target_heading_deg = 0.0f;
-    float target_speed_kts = 250.0f;
-
-    float pending_altitude_ft = 10000.0f;
-    float pending_heading_deg = 0.0f;
-    float pending_speed_kts = 250.0f;
-
-    float altitude_rate_fps = 0.0f;
-    float speed_rate_kps = 0.0f;
-
-    std::string last_response = "";
-    float response_timer = 0.0f;
-
-    float command_delay = 0.0f;
-    bool has_pending_command = false;
-
-    float distance2_to(const Aircraft& other) const
-    {
-        float dx = x - other.x;
-        float dy = y - other.y;
-        return dx * dx + dy * dy;
-    }
-
-    void initTargets()
-    {
-        target_altitude_ft = altitude_ft;
-        target_heading_deg = heading_deg;
-        target_speed_kts = speed_kts;
-        pending_altitude_ft = altitude_ft;
-        pending_heading_deg = heading_deg;
-        pending_speed_kts = speed_kts;
-        altitude_rate_fps = 0.0f;
-        speed_rate_kps = 0.0f;
-    }
-
-    void setCommand(const std::string& response, float delay = 3.5f)
-    {
-        if (is_overflight) return; // Cannot contact overflights
-
-        last_response = response;
-        response_timer = 5.0f;
-        command_delay = delay;
-        has_pending_command = true;
-    }
-
-    void setImmediateResponse(const std::string& response, float duration = 3.0f)
-    {
-        if (is_overflight) return;
-
-        last_response = response;
-        response_timer = duration;
-
-        command_delay = 0.0f;
-        has_pending_command = false;
-    }
-};
-
-static float angle_difference(float target, float current)
-{
-    float diff = fmodf(target - current + 540.0f, 360.0f) - 180.0f;
-    return diff;
-}
-
-// Generate squawk code
-std::string generateSquawkCode()
-{
-    int code = 1000 + rand() % 7000;
-    std::ostringstream ss;
-    ss << std::setw(4) << std::setfill('0') << code;
-    return ss.str();
-}
-
-void generateAircraft(std::vector<Aircraft>& aircrafts, Aircraft& a, const float radar_range_km, const int i)
-{
-    std::ostringstream ss;
-    ss << "AC" << std::setw(2) << std::setfill('0') << (i + 1);
-    a.callsign = ss.str();
-
-    const float r = ((float)rand() / RAND_MAX) * radar_range_km;
-    const float theta = ((float)rand() / RAND_MAX) * 2.0f * IM_PI;
-    a.x = cosf(theta) * r;
-    a.y = sinf(theta) * r;
-
-    // 10% chance of overflight
-    if (rand() % 100 < 10)
-    {
-        a.is_overflight = true;
-        a.altitude_ft = 32000.0f + (rand() % 111) * 100; // 32000-43000 ft
-        a.squawk_code = "----"; // No transponder contact
-    }
-    else
-    {
-        a.is_overflight = false;
-        a.altitude_ft = 1600.0f + (rand() % 215) * 100; // 1600-23000 ft
-        a.squawk_code = generateSquawkCode();
-
-        if (rand() % 100 < 2)
-        {
-            int emergency_type = rand() % 4;
-            a.emergency = (EmergencyType)(emergency_type + 1);
-
-            float dist_to_airport = sqrtf(a.x * a.x + a.y * a.y);
-
-            switch (a.emergency)
-            {
-            case EMERGENCY_LOW_FUEL:
-                a.emergency_timer = 240.0f + dist_to_airport * 8.0f; // 4+ min
-                a.emergency_message = "Low fuel - requesting priority landing";
-                a.squawk_code = "7700";
-                break;
-            case EMERGENCY_MEDICAL:
-                a.emergency_timer = 480.0f + dist_to_airport * 12.0f; // 8+ min
-                a.emergency_message = "Medical emergency on board";
-                a.squawk_code = "7700";
-                break;
-            case EMERGENCY_ENGINE_FAILURE:
-                a.emergency_timer = 150.0f + dist_to_airport * 4.0f; // 2.5+ min
-                a.emergency_message = "Engine failure - declaring emergency";
-                a.squawk_code = "7700";
-                break;
-            case EMERGENCY_HYDRAULIC:
-                a.emergency_timer = 320.0f + dist_to_airport * 10.0f; // 5+ min
-                a.emergency_message = "Hydraulic system failure";
-                a.squawk_code = "7700";
-                break;
-            default:
-                break;
-            }
-        }
-    }
-
-    a.heading_deg = (float)(rand() % 72) * 5;
-    a.speed_kts = 130.0f + (rand() % 300);
-    a.selected = false;
-
-    a.initTargets();
-}
 
 int main(int, char**)
 {
@@ -271,6 +77,7 @@ int main(int, char**)
     float wind_heading = (float)(rand() % 360);
     float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
 
+    //generateInitialAircrafts
     std::vector<Aircraft> aircraft;
     const int initial_count = 12;
     for (int i = 0; i < initial_count; ++i)
@@ -309,67 +116,7 @@ int main(int, char**)
         glfwPollEvents();
 
         // LOSOWE AWARIE PODCZAS GRY
-        random_emergency_timer += dt;
-        if (random_emergency_timer >= random_emergency_interval)
-        {
-            random_emergency_timer = 0.0f;
-
-            // 15% szansy na losową awarię co 20 sekund
-            if (rand() % 100 < 15 && !aircraft.empty())
-            {
-                // Znajdź samolot bez awarii
-                std::vector<int> candidates;
-                for (int i = 0; i < (int)aircraft.size(); ++i)
-                {
-                    if (aircraft[i].emergency == EMERGENCY_NONE &&
-                        !aircraft[i].is_overflight &&
-                        !aircraft[i].is_crashed)
-                    {
-                        candidates.push_back(i);
-                    }
-                }
-
-                if (!candidates.empty())
-                {
-                    int random_index = candidates[rand() % candidates.size()];
-                    Aircraft& random_ac = aircraft[random_index];
-
-                    int emergency_type = rand() % 4;
-                    random_ac.emergency = (EmergencyType)(emergency_type + 1);
-
-                    float dist_to_airport = sqrtf(random_ac.x * random_ac.x + random_ac.y * random_ac.y);
-
-                    switch (random_ac.emergency)
-                    {
-                    case EMERGENCY_LOW_FUEL:
-                        random_ac.emergency_timer = 240.0f + dist_to_airport * 8.0f;
-                        random_ac.emergency_message = "Low fuel - requesting priority landing";
-                        random_ac.squawk_code = "7700";
-                        break;
-                    case EMERGENCY_MEDICAL:
-                        random_ac.emergency_timer = 480.0f + dist_to_airport * 12.0f;
-                        random_ac.emergency_message = "Medical emergency on board";
-                        random_ac.squawk_code = "7700";
-                        break;
-                    case EMERGENCY_ENGINE_FAILURE:
-                        random_ac.emergency_timer = 150.0f + dist_to_airport * 4.0f;
-                        random_ac.emergency_message = "Engine failure - declaring emergency";
-                        random_ac.squawk_code = "7700";
-                        break;
-                    case EMERGENCY_HYDRAULIC:
-                        random_ac.emergency_timer = 320.0f + dist_to_airport * 10.0f;
-                        random_ac.emergency_message = "Hydraulic system failure";
-                        random_ac.squawk_code = "7700";
-                        break;
-                    default:
-                        break;
-                    }
-
-                    // Informacja dla gracza
-                    random_ac.setCommand("MAYDAY MAYDAY MAYDAY! " + random_ac.emergency_message);
-                }
-            }
-        }
+        GenerateRandomEmergency(aircraft, dt, random_emergency_timer, random_emergency_interval);
 
         // Update aircraft
         for (size_t i = 0; i < aircraft.size(); ++i)
@@ -941,36 +688,7 @@ int main(int, char**)
             // Emergency display
             if (sel.emergency != EMERGENCY_NONE)
             {
-                ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-                ImGui::Text("EMERGENCY: %s", sel.emergency_message.c_str());
-                int mins = (int)(sel.emergency_timer / 60.0f);
-                int secs = (int)(sel.emergency_timer) % 60;
-                ImGui::Text("Time to land: %02d:%02d", mins, secs);
-
-                // Pasek postępu czasu
-                float max_time = 0.0f;
-                switch (sel.emergency)
-                {
-                case EMERGENCY_LOW_FUEL: max_time = 600.0f;
-                    break;
-                case EMERGENCY_MEDICAL: max_time = 1200.0f;
-                    break;
-                case EMERGENCY_ENGINE_FAILURE: max_time = 300.0f;
-                    break;
-                case EMERGENCY_HYDRAULIC: max_time = 480.0f;
-                    break;
-                default: max_time = 600.0f;
-                }
-
-                float progress = 1.0f - (sel.emergency_timer / max_time);
-                ImGui::ProgressBar(progress, ImVec2(-1, 20));
-
-                if (sel.emergency_timer < 60.0f)
-                {
-                    ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f),
-                                       "NO TIME LEFT! LAND IMMEDIATELY!");
-                }
-                ImGui::PopStyleColor();
+                ::DrawEmergencyPanel(sel);
             }
 
             // Show aircraft response
