@@ -10,10 +10,7 @@
 #pragma once
 
 #include <string>
-#include <sstream>
 #include <iomanip>
-#include <cmath>
-#include <cstdlib>
 
 #ifndef IM_PI
 #define IM_PI 3.14159265358979323846f
@@ -29,18 +26,3 @@ std::string generateSquawkCode();
 
 // Radar
 static constexpr float radar_range_km = 80.0f;
-
-// Runway data structure
-struct Runway
-{
-    std::string name;
-    float heading_deg; // true heading
-    float x, y;        // position in km
-};
-
-// Waypoint structure
-struct Waypoint
-{
-    std::string name;
-    float x, y; // position in km
-};

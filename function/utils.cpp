@@ -3,6 +3,7 @@
 //
 
 #include "utils.h"
+#include <cmath>
 
 // Returns the shortest difference between two angles (-180..+180)
 float angle_difference(float target, float current)
