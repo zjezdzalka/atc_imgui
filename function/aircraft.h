@@ -45,10 +45,6 @@ struct Aircraft
     float target_heading_deg = 0.0f;
     float target_speed_kts = 250.0f;
 
-    float pending_altitude_ft = 10000.0f;
-    float pending_heading_deg = 0.0f;
-    float pending_speed_kts = 250.0f;
-
     float altitude_rate_fps = 0.0f;
     float speed_rate_kps = 0.0f;
 
@@ -57,6 +53,10 @@ struct Aircraft
 
     float command_delay = 0.0f;
     bool has_pending_command = false;
+
+    float pending_altitude_ft = 0.0f;
+    float pending_heading_deg = 0.0f;
+    float pending_speed_kts = 0.0f;
 
     float distance2_to(const Aircraft& other) const;
 
