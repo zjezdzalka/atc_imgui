@@ -86,6 +86,7 @@ int main(int, char**)
     // Zmienna do losowych awarii
     float random_emergency_timer = 0.0f;
     const float random_emergency_interval = 20.0f; // Co 20 sekund szansa na awarię
+    int total_crash_count = 0;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -141,6 +142,7 @@ int main(int, char**)
                     a.crash_timer = 5.0f; // Czas przez który efekt będzie widoczny
                     a.crash_x = a.x;
                     a.crash_y = a.y;
+                    total_crash_count++;
                     continue; // Nie kontynuuj normalnych aktualizacji
                 }
             }
@@ -150,8 +152,16 @@ int main(int, char**)
                 a.command_delay -= dt;
                 if (a.command_delay <= 0.0f)
                 {
-                    // Only reset command state / feedback
-                    a.has_pending_command = false;
+                    if (a.has_pending_command)
+                    {
+                        // Only reset command state / feedback
+
+                        a.target_altitude_ft = a.pending_altitude_ft;
+                        a.target_heading_deg = a.pending_heading_deg;
+                        a.target_speed_kts = a.pending_speed_kts;
+
+                        a.has_pending_command = false;
+                    }
                 }
             }
 
@@ -466,10 +476,7 @@ int main(int, char**)
         ImGui::Text("Conflicts: %zu", conflicts.size());
 
         // Count crashes
-        int crashes_count = 0;
-        for (const auto& a : aircraft)
-            if (a.is_crashed) crashes_count++;
-        ImGui::Text("Crashes: %d", crashes_count);
+        ImGui::Text("Crashes: %d", total_crash_count);
 
         ImGui::Dummy(ImVec2(0, 5));
         ImGui::Text("Animation Speed:");
@@ -623,11 +630,12 @@ int main(int, char**)
 
                 if (diff <= 0.0f)
                 {
-                    sel.setImmediateResponse("Minimum altitude is 1600 ft", 6.0f);
+                    sel.setImmediateResponse("Minimum altitude is 1600 ft", 5.0f);
                 }
                 else
                 {
-                    sel.target_altitude_ft = new_target;
+                    sel.pending_altitude_ft = new_target;
+                    sel.has_pending_command = true;
 
                     std::ostringstream r;
                     if (requested < ALT_MIN)
@@ -635,7 +643,8 @@ int main(int, char**)
                     else
                         r << "Roger, descending " << (int)diff << " ft";
 
-                    sel.setCommand(r.str(), 6.0f);
+                    sel.setCommand(r.str(), 5.0f);
+                    sel.command_delay = 5.0f;
                 }
             }
             ImGui::SameLine();
@@ -651,11 +660,12 @@ int main(int, char**)
 
                 if (diff <= 0.0f)
                 {
-                    sel.setImmediateResponse("Minimum altitude is 1600 ft", 6.0f);
+                    sel.setImmediateResponse("Minimum altitude is 1600 ft", 5.0f);
                 }
                 else
                 {
-                    sel.target_altitude_ft = new_target;
+                    sel.pending_altitude_ft = new_target;
+                    sel.has_pending_command = true;
 
                     std::ostringstream r;
                     if (requested < ALT_MIN)
@@ -663,7 +673,8 @@ int main(int, char**)
                     else
                         r << "Roger, descending " << (int)diff << " ft";
 
-                    sel.setCommand(r.str(), 6.0f);
+                    sel.setCommand(r.str(), 5.0f);
+                    sel.command_delay = 5.0f;
                 }
             }
             ImGui::SameLine();
@@ -679,11 +690,12 @@ int main(int, char**)
 
                 if (diff <= 0.0f)
                 {
-                    sel.setImmediateResponse("Maximum altitude is 23000 ft", 6.0f);
+                    sel.setImmediateResponse("Maximum altitude is 23000 ft", 5.0f);
                 }
                 else
                 {
-                    sel.target_altitude_ft = new_target;
+                    sel.pending_altitude_ft = new_target;
+                    sel.has_pending_command = true;
 
                     std::ostringstream r;
                     if (requested > ALT_MAX)
@@ -691,7 +703,8 @@ int main(int, char**)
                     else
                         r << "Roger, climbing " << (int)diff << " ft";
 
-                    sel.setCommand(r.str(), 6.0f);
+                    sel.setCommand(r.str(), 5.0f);
+                    sel.command_delay = 5.0f;
                 }
             }
             ImGui::SameLine();
@@ -707,11 +720,12 @@ int main(int, char**)
 
                 if (diff <= 0.0f)
                 {
-                    sel.setImmediateResponse("Maximum altitude is 23000 ft", 6.0f);
+                    sel.setImmediateResponse("Maximum altitude is 23000 ft", 5.0f);
                 }
                 else
                 {
-                    sel.target_altitude_ft = new_target;
+                    sel.pending_altitude_ft = new_target;
+                    sel.has_pending_command = true;
 
                     std::ostringstream r;
                     if (requested > ALT_MAX)
@@ -719,7 +733,8 @@ int main(int, char**)
                     else
                         r << "Roger, climbing " << (int)diff << " ft";
 
-                    sel.setCommand(r.str(), 6.0f);
+                    sel.setCommand(r.str(), 5.0f);
+                    sel.command_delay = 5.0f;
                 }
             }
 
@@ -738,29 +753,29 @@ int main(int, char**)
             // Heading buttons
             if (ImGui::Button("-5°##hdg1", ImVec2(210, 0)))
             {
-                float old = sel.heading_deg;
-                sel.target_heading_deg = fmodf(sel.target_heading_deg + 5.0f, 360.0f);
-                float diff = angle_difference(sel.target_heading_deg, old);
+                float old_target = sel.target_heading_deg;
+                sel.pending_heading_deg = fmodf(sel.target_heading_deg + 5.0f, 360.0f);
+
+                float diff = angle_difference(sel.pending_heading_deg, old_target);
                 if (diff < 0) diff = -diff;
 
                 std::ostringstream r;
                 r << "Roger, turning left " << (int)diff << " degrees";
-                sel.setCommand(r.str(), 3.5f); // message stays for 3.5s
+                sel.setCommand(r.str(), 3.5f); // stays for 3.5s
             }
             ImGui::SameLine();
             if (ImGui::Button("+5°##hdg2", ImVec2(210, 0)))
             {
-                float old = sel.heading_deg;
-                sel.target_heading_deg = fmodf(sel.target_heading_deg - 5.0f + 360.0f, 360.0f);
-                float diff = angle_difference(old, sel.target_heading_deg);
+                float old_target = sel.target_heading_deg;
+                sel.pending_heading_deg = fmodf(sel.target_heading_deg - 5.0f + 360.0f, 360.0f);
+
+                float diff = angle_difference(sel.pending_heading_deg, old_target);
                 if (diff < 0) diff = -diff;
 
                 std::ostringstream r;
                 r << "Roger, turning right " << (int)diff << " degrees";
                 sel.setCommand(r.str(), 3.5f);
             }
-
-            ImGui::Separator();
 
             // === SPEED ===
             ImGui::Text("Speed: %.0f kts", sel.speed_kts);
@@ -776,9 +791,10 @@ int main(int, char**)
             // Speed buttons
             if (ImGui::Button("-5 kts##spd1", ImVec2(210, 0)))
             {
-                float old = sel.speed_kts;
-                sel.target_speed_kts = std::max(0.0f, sel.target_speed_kts - 5.0f);
-                float diff = sel.target_speed_kts - old;
+                float old_target = sel.target_speed_kts;
+                sel.pending_speed_kts = std::max(0.0f, sel.target_speed_kts - 5.0f);
+
+                float diff = sel.pending_speed_kts - old_target;
                 if (diff < 0) diff = -diff;
 
                 std::ostringstream r;
@@ -788,9 +804,10 @@ int main(int, char**)
             ImGui::SameLine();
             if (ImGui::Button("+5 kts##spd2", ImVec2(210, 0)))
             {
-                float old = sel.speed_kts;
-                sel.target_speed_kts += 5.0f;
-                float diff = sel.target_speed_kts - old;
+                float old_target = sel.target_speed_kts;
+                sel.pending_speed_kts = sel.target_speed_kts + 5.0f;
+
+                float diff = sel.pending_speed_kts - old_target;
 
                 std::ostringstream r;
                 r << "Roger, increasing speed " << (int)diff << " knots";
@@ -802,6 +819,7 @@ int main(int, char**)
             static std::string command_feedback = "";
             static std::vector<std::string> history;
             static int history_index = -1;
+            static float command_feedback_timer = 0.0f;
 
             ImGui::Separator();
             ImGui::Text("Command Input:");
@@ -813,6 +831,7 @@ int main(int, char**)
                 std::string cmd = command_buf;
                 command_buf[0] = '\0';
                 command_feedback = "";
+                command_feedback_timer = 5.0f;
 
                 history.push_back(cmd);
                 history_index = -1;
@@ -830,20 +849,25 @@ int main(int, char**)
 
                 // REMOVE AIRCRAFT command
                 if (u.find("REMOVE") != std::string::npos &&
-          u.find("AIRCRAFT") != std::string::npos)
+                    u.find("AIRCRAFT") != std::string::npos)
                 {
                     aircraft.erase(aircraft.begin() + selected_index);
                     selected_index = -1;
                     command_feedback = "Aircraft removed.";
                 }
+                // ALT / FL command
                 else if (u.rfind("FL", 0) == 0)
                 {
                     float fl = extract_number(u);
                     float alt = fl * 100.0f;
                     alt = std::clamp(alt, ALT_MIN, ALT_MAX);
 
-                    float diff = alt - sel.target_altitude_ft;
-                    sel.target_altitude_ft = alt;
+                    float old_pending = sel.pending_altitude_ft;
+                    float diff = alt - old_pending;
+
+                    sel.pending_altitude_ft = alt;
+                    sel.has_pending_command = true;
+                    sel.command_delay = 5.0f; // same delay as buttons
 
                     std::ostringstream response;
                     if (diff > 0)
@@ -851,13 +875,44 @@ int main(int, char**)
                     else
                         response << "Descending " << (int)(-diff) << " ft to flight level " << (int)fl;
 
-                    sel.setCommand(response.str(), 3.5f);
+                    sel.setCommand(response.str(), 5.0f);
                     command_feedback = "Flight level assigned.";
                 }
+                else if (u.rfind("ALT ", 0) == 0 || u.rfind("ALTITUDE ", 0) == 0 ||
+                    u.rfind("CLIMB ", 0) == 0 || u.rfind("DESCEND ", 0) == 0)
+                {
+                    float alt = extract_number(u);
+                    alt = std::clamp(alt, ALT_MIN, ALT_MAX);
+
+                    float old_pending = sel.pending_altitude_ft;
+                    float diff = alt - old_pending;
+
+                    sel.pending_altitude_ft = alt;
+                    sel.has_pending_command = true;
+                    sel.command_delay = 5.0f;
+
+                    std::ostringstream response;
+                    if (diff > 0)
+                        response << "Climbing " << (int)diff << " ft to " << (int)alt << " ft";
+                    else
+                        response << "Descending " << (int)(-diff) << " ft to " << (int)alt << " ft";
+
+                    sel.setCommand(response.str(), 5.0f);
+                    command_feedback = "Altitude assigned.";
+                }
+                // HDG / TURN commands
                 else if (u.rfind("HDG ", 0) == 0 || u.rfind("HEADING ", 0) == 0)
                 {
                     float hdg = extract_number(u);
-                    sel.target_heading_deg = fmodf(450.0f - hdg, 360.0f);
+                    float old_pending = sel.pending_heading_deg;
+
+                    sel.pending_heading_deg = fmodf(450.0f - hdg, 360.0f);
+                    sel.has_pending_command = true;
+                    sel.command_delay = 3.5f; // same as heading buttons
+
+                    float diff = angle_difference(sel.pending_heading_deg, old_pending);
+                    if (diff < 0) diff = -diff;
+
                     std::ostringstream response;
                     response << "Turning to heading " << (int)hdg;
                     sel.setCommand(response.str(), 3.5f);
@@ -866,62 +921,56 @@ int main(int, char**)
                 else if (u.rfind("TURN LEFT ", 0) == 0)
                 {
                     float deg = extract_number(u);
-                    sel.target_heading_deg = fmodf(sel.target_heading_deg + deg, 360.0f);
+                    float old_pending = sel.pending_heading_deg;
+
+                    sel.pending_heading_deg = fmodf(sel.pending_heading_deg + deg, 360.0f);
+                    sel.has_pending_command = true;
+                    sel.command_delay = 3.5f;
+
+                    float diff = angle_difference(sel.pending_heading_deg, old_pending);
+                    if (diff < 0) diff = -diff;
+
                     std::ostringstream response;
-                    response << "Turning left " << (int)deg << " degrees";
+                    response << "Turning left " << (int)diff << " degrees";
                     sel.setCommand(response.str(), 3.5f);
                     command_feedback = "Turning left.";
                 }
                 else if (u.rfind("TURN RIGHT ", 0) == 0)
                 {
                     float deg = extract_number(u);
-                    sel.target_heading_deg = fmodf(sel.target_heading_deg - deg + 360.0f, 360.0f);
+                    float old_pending = sel.pending_heading_deg;
+
+                    sel.pending_heading_deg = fmodf(sel.pending_heading_deg - deg + 360.0f, 360.0f);
+                    sel.has_pending_command = true;
+                    sel.command_delay = 3.5f;
+
+                    float diff = angle_difference(sel.pending_heading_deg, old_pending);
+                    if (diff < 0) diff = -diff;
+
                     std::ostringstream response;
-                    response << "Turning right " << (int)deg << " degrees";
+                    response << "Turning right " << (int)diff << " degrees";
                     sel.setCommand(response.str(), 3.5f);
                     command_feedback = "Turning right.";
                 }
-                else if (u.rfind("ALT ", 0) == 0 || u.rfind("ALTITUDE ", 0) == 0 ||
-                 u.rfind("CLIMB ", 0) == 0 || u.rfind("DESCEND ", 0) == 0)
-                {
-                    float alt = extract_number(u);
-                    float old = sel.target_altitude_ft;
-                    alt = std::clamp(alt, ALT_MIN, ALT_MAX);
-                    sel.target_altitude_ft = alt;
 
-                    float diff = alt - old;
-                    std::ostringstream response;
-                    if (diff > 0)
-                    {
-                        if (old + diff > ALT_MAX)
-                            response << "Warning: cannot climb above " << (int)ALT_MAX
-                                     << " ft, climbing only " << (int)(ALT_MAX - old) << " ft";
-                        else
-                            response << "Climbing " << (int)diff << " ft to " << (int)alt << " ft";
-                    }
-                    else
-                    {
-                        if (old + diff < ALT_MIN)
-                            response << "Warning: cannot descend below " << (int)ALT_MIN
-                                     << " ft, descending only " << (int)(old - ALT_MIN) << " ft";
-                        else
-                            response << "Descending " << (int)(-diff) << " ft to " << (int)alt << " ft";
-                    }
-                    sel.setCommand(response.str(), 3.5f);
-                    command_feedback = "Altitude assigned.";
-                }
+                // SPD / SPEED commands
                 else if (u.rfind("SPD ", 0) == 0 || u.rfind("SPEED ", 0) == 0)
                 {
                     float spd = extract_number(u);
-                    float old = sel.target_speed_kts;
-                    sel.target_speed_kts = std::max(0.0f, spd);
+                    float old_pending = sel.pending_speed_kts;
 
-                    float diff = sel.target_speed_kts - old;
+                    sel.pending_speed_kts = std::max(0.0f, spd);
+                    sel.has_pending_command = true;
+                    sel.command_delay = 3.5f; // same as speed buttons
+
+                    float diff = sel.pending_speed_kts - old_pending;
+                    if (diff < 0) diff = -diff;
+
                     std::ostringstream response;
-                    if (diff > 0)
-                        response << "Increasing speed " << (int)diff << " kts to " << (int)sel.target_speed_kts;
+                    if (spd > old_pending)
+                        response << "Increasing speed " << (int)diff << " kts to " << (int)sel.pending_speed_kts;
                     else
-                        response << "Reducing speed " << (int)(-diff) << " kts to " << (int)sel.target_speed_kts;
+                        response << "Reducing speed " << (int)diff << " kts to " << (int)sel.pending_speed_kts;
 
                     sel.setCommand(response.str(), 3.5f);
                     command_feedback = "Speed assigned.";
@@ -932,8 +981,12 @@ int main(int, char**)
                 }
             }
 
-            if (!command_feedback.empty())
+            if (!command_feedback.empty() && command_feedback_timer > 0.0f)
             {
+                command_feedback_timer -= dt;
+
+                if (command_feedback_timer < 0.0f) command_feedback_timer = 0.0f;
+
                 ImGui::TextColored(ImVec4(0.7f, 1.0f, 0.7f, 1.0f), "%s", command_feedback.c_str());
             }
         }
