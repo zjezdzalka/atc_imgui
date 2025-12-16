@@ -67,10 +67,14 @@ int main(int, char**)
     float wind_heading = (float)(rand() % 360);
     float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
 
-    //generateInitialAircrafts
     const int initial_count = 12;
     std::vector<Aircraft> aircraft = generateInitialAircrafts(initial_count, radar_range_km);
     int selected_index = -1;
+
+    const float ALT_MAX = 23000.0f;
+    const float ALT_MIN = 1600.0f;
+    const float SPD_MIN = 80.0f;
+    const float SPD_MAX = 300.0f;
 
     float camera_x = 0.0f;
     float camera_y = 0.0f;
@@ -119,9 +123,13 @@ int main(int, char**)
                     i--;
 
                     if (selected_index == (int)i)
+                    {
                         selected_index = -1;
+                    }
                     else if (selected_index > (int)i)
+                    {
                         selected_index--;
+                    }
 
                     continue;
                 }
@@ -214,9 +222,13 @@ int main(int, char**)
             {
                 float turn_rate = 5.0f * dt;
                 if (heading_diff > 0)
+                {
                     a.heading_deg += std::min(turn_rate, heading_diff);
+                }
                 else
+                {
                     a.heading_deg += std::max(-turn_rate, heading_diff);
+                }
 
                 a.heading_deg = fmodf(a.heading_deg + 360.0f, 360.0f);
             }
@@ -233,18 +245,26 @@ int main(int, char**)
                 float distance_factor = sqrtf(2.0f * speed_accel * fabs(speed_diff));
 
                 if (speed_diff > 0)
+                {
                     desired_rate = std::min(max_speed_rate, distance_factor);
+                }
                 else
+                {
                     desired_rate = -std::min(max_speed_rate, distance_factor);
+                }
 
                 float rate_diff = desired_rate - a.speed_rate_kps;
                 if (fabs(rate_diff) > 0.05f)
                 {
                     float accel_step = speed_accel * dt;
                     if (rate_diff > 0)
+                    {
                         a.speed_rate_kps += std::min(accel_step, rate_diff);
+                    }
                     else
+                    {
                         a.speed_rate_kps += std::max(-accel_step, rate_diff);
+                    }
                 }
                 else
                 {
@@ -289,7 +309,9 @@ int main(int, char**)
             for (size_t j = i + 1; j < aircraft.size(); ++j)
             {
                 if (aircraft[i].is_crashed || aircraft[j].is_crashed)
+                {
                     continue; // Rozbite samoloty nie powodują konfliktów
+                }
 
                 float dx = aircraft[i].x - aircraft[j].x;
                 float dy = aircraft[i].y - aircraft[j].y;
@@ -569,11 +591,17 @@ int main(int, char**)
                         float deviation = sel.altitude_ft - expected_alt_ft;
 
                         if (deviation > 200.0f)
+                        {
                             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "TOO HIGH (%.0f ft)", deviation);
+                        }
                         else if (deviation < -200.0f)
+                        {
                             ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "TOO LOW (%.0f ft)", -deviation);
+                        }
                         else
+                        {
                             ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "ON GLIDESLOPE");
+                        }
                         break;
                     }
                 }
@@ -616,9 +644,6 @@ int main(int, char**)
                 );
             }
 
-            const float ALT_MAX = 23000.0f;
-            const float ALT_MIN = 1600.0f;
-
             if (ImGui::Button("-1000##alt1", ImVec2(100, 0)))
             {
                 float old_target = sel.target_altitude_ft;
@@ -639,10 +664,13 @@ int main(int, char**)
 
                     std::ostringstream r;
                     if (requested < ALT_MIN)
+                    {
                         r << "Descending " << (int)diff << " ft to minimum altitude of 1600 ft";
+                    }
                     else
+                    {
                         r << "Roger, descending " << (int)diff << " ft";
-
+                    }
                     sel.setCommand(r.str(), 5.0f);
                     sel.command_delay = 5.0f;
                 }
@@ -669,10 +697,13 @@ int main(int, char**)
 
                     std::ostringstream r;
                     if (requested < ALT_MIN)
+                    {
                         r << "Descending " << (int)diff << " ft to minimum altitude of 1600 ft";
+                    }
                     else
+                    {
                         r << "Roger, descending " << (int)diff << " ft";
-
+                    }
                     sel.setCommand(r.str(), 5.0f);
                     sel.command_delay = 5.0f;
                 }
@@ -699,10 +730,13 @@ int main(int, char**)
 
                     std::ostringstream r;
                     if (requested > ALT_MAX)
+                    {
                         r << "Climbing " << (int)diff << " ft to maximum altitude of 23000 ft";
+                    }
                     else
+                    {
                         r << "Roger, climbing " << (int)diff << " ft";
-
+                    }
                     sel.setCommand(r.str(), 5.0f);
                     sel.command_delay = 5.0f;
                 }
@@ -729,10 +763,13 @@ int main(int, char**)
 
                     std::ostringstream r;
                     if (requested > ALT_MAX)
+                    {
                         r << "Climbing " << (int)diff << " ft to maximum altitude of 23000 ft";
+                    }
                     else
+                    {
                         r << "Roger, climbing " << (int)diff << " ft";
-
+                    }
                     sel.setCommand(r.str(), 5.0f);
                     sel.command_delay = 5.0f;
                 }
@@ -792,26 +829,66 @@ int main(int, char**)
             if (ImGui::Button("-5 kts##spd1", ImVec2(210, 0)))
             {
                 float old_target = sel.target_speed_kts;
-                sel.pending_speed_kts = std::max(0.0f, sel.target_speed_kts - 5.0f);
 
-                float diff = sel.pending_speed_kts - old_target;
-                if (diff < 0) diff = -diff;
+                float requested = old_target - 5.0f;
+                float new_target = std::max(SPD_MIN, requested);
 
-                std::ostringstream r;
-                r << "Roger, reducing speed " << (int)diff << " knots";
-                sel.setCommand(r.str(), 3.5f);
+                float diff = old_target - new_target;
+
+                if (diff <= 0.0f)
+                {
+                    sel.setImmediateResponse("Minimum speed is 80 knots", 5.0f);
+                }
+                else
+                {
+                    sel.pending_speed_kts = new_target;
+                    sel.has_pending_command = true;
+                    sel.command_delay = 5.0f;
+
+                    std::ostringstream r;
+                    if (requested < SPD_MIN)
+                    {
+                        r << "Reducing speed " << (int)diff << " knots to minimum 80 knots";
+                    }
+                    else
+                    {
+                        r << "Roger, reducing speed " << (int)diff << " knots";
+                    }
+                    sel.setCommand(r.str(), 5.0f);
+                }
             }
             ImGui::SameLine();
+
             if (ImGui::Button("+5 kts##spd2", ImVec2(210, 0)))
             {
                 float old_target = sel.target_speed_kts;
-                sel.pending_speed_kts = sel.target_speed_kts + 5.0f;
 
-                float diff = sel.pending_speed_kts - old_target;
+                float requested = old_target + 5.0f;
+                float new_target = std::min(SPD_MAX, requested);
 
-                std::ostringstream r;
-                r << "Roger, increasing speed " << (int)diff << " knots";
-                sel.setCommand(r.str(), 3.5f);
+                float diff = new_target - old_target;
+
+                if (diff <= 0.0f)
+                {
+                    sel.setImmediateResponse("Maximum speed is 300 knots", 5.0f);
+                }
+                else
+                {
+                    sel.pending_speed_kts = new_target;
+                    sel.has_pending_command = true;
+                    sel.command_delay = 5.0f;
+
+                    std::ostringstream r;
+                    if (requested > SPD_MAX)
+                    {
+                        r << "Increasing speed " << (int)diff << " knots to maximum 300 knots";
+                    }
+                    else
+                    {
+                        r << "Roger, increasing speed " << (int)diff << " knots";
+                    }
+                    sel.setCommand(r.str(), 5.0f);
+                }
             }
 
             // TEXT COMMAND INPUT
@@ -843,7 +920,9 @@ int main(int, char**)
                 {
                     for (int i = 0; i < (int)s.size(); i++)
                         if ((s[i] >= '0' && s[i] <= '9'))
+                        {
                             return atof(s.c_str() + i);
+                        }
                     return 0.0f;
                 };
 
@@ -871,10 +950,13 @@ int main(int, char**)
 
                     std::ostringstream response;
                     if (diff > 0)
+                    {
                         response << "Climbing " << (int)diff << " ft to flight level " << (int)fl;
+                    }
                     else
+                    {
                         response << "Descending " << (int)(-diff) << " ft to flight level " << (int)fl;
-
+                    }
                     sel.setCommand(response.str(), 5.0f);
                     command_feedback = "Flight level assigned.";
                 }
@@ -893,10 +975,13 @@ int main(int, char**)
 
                     std::ostringstream response;
                     if (diff > 0)
+                    {
                         response << "Climbing " << (int)diff << " ft to " << (int)alt << " ft";
+                    }
                     else
+                    {
                         response << "Descending " << (int)(-diff) << " ft to " << (int)alt << " ft";
-
+                    }
                     sel.setCommand(response.str(), 5.0f);
                     command_feedback = "Altitude assigned.";
                 }
@@ -952,34 +1037,76 @@ int main(int, char**)
                     sel.setCommand(response.str(), 3.5f);
                     command_feedback = "Turning right.";
                 }
-
                 // SPD / SPEED commands
                 else if (u.rfind("SPD ", 0) == 0 || u.rfind("SPEED ", 0) == 0)
                 {
                     float spd = extract_number(u);
+
                     float old_pending = sel.pending_speed_kts;
+                    float requested = spd;
+                    float new_speed = std::clamp(requested, SPD_MIN, SPD_MAX);
 
-                    sel.pending_speed_kts = std::max(0.0f, spd);
-                    sel.has_pending_command = true;
-                    sel.command_delay = 3.5f; // same as speed buttons
+                    float diff = new_speed - old_pending;
 
-                    float diff = sel.pending_speed_kts - old_pending;
-                    if (diff < 0) diff = -diff;
-
-                    std::ostringstream response;
-                    if (spd > old_pending)
-                        response << "Increasing speed " << (int)diff << " kts to " << (int)sel.pending_speed_kts;
+                    if (fabs(diff) < 0.5f)
+                    {
+                        if (requested < SPD_MIN)
+                        {
+                            command_feedback = "Minimum speed is 80 knots.";
+                        }
+                        else if (requested > SPD_MAX)
+                        {
+                            command_feedback = "Maximum speed is 300 knots.";
+                        }
+                        else
+                        {
+                            command_feedback = "Speed unchanged.";
+                        }
+                    }
                     else
-                        response << "Reducing speed " << (int)diff << " kts to " << (int)sel.pending_speed_kts;
+                    {
+                        sel.pending_speed_kts = new_speed;
+                        sel.has_pending_command = true;
+                        sel.command_delay = 3.5f;
 
-                    sel.setCommand(response.str(), 3.5f);
-                    command_feedback = "Speed assigned.";
+                        std::ostringstream response;
+                        if (diff > 0)
+                        {
+                            if (requested > SPD_MAX)
+                            {
+                                response << "Increasing speed " << (int)diff
+                                    << " knots to maximum 300 knots";
+                            }
+                            else
+                            {
+                                response << "Increasing speed " << (int)diff
+                                    << " knots to " << (int)new_speed;
+                            }
+                        }
+                        else
+                        {
+                            if (requested < SPD_MIN)
+                            {
+                                response << "Reducing speed " << (int)(-diff)
+                                    << " knots to minimum 80 knots";
+                            }
+                            else
+                            {
+                                response << "Reducing speed " << (int)(-diff)
+                                    << " knots to " << (int)new_speed;
+                            }
+                        }
+
+                        sel.setCommand(response.str(), 3.5f);
+                        command_feedback = "Speed assigned.";
+                    }
                 }
                 else
                 {
                     command_feedback = "Invalid or unknown command.";
                 }
             }
+
 
             if (!command_feedback.empty() && command_feedback_timer > 0.0f)
             {
