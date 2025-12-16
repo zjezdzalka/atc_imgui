@@ -165,7 +165,7 @@ int main(int, char**)
                 }
             }
 
-            const float max_alt_rate = 33.33f; // ft/s (~2000 fpm)
+            const float max_alt_rate = 40.0f; // ft/s (~2000 fpm)
             const float alt_accel = 4.0f; // ft/s²
             const float max_speed_rate = 3.0f;
             const float speed_accel = 0.5f;
@@ -212,7 +212,7 @@ int main(int, char**)
             float heading_diff = angle_difference(a.target_heading_deg, a.heading_deg);
             if (fabs(heading_diff) > 0.5f)
             {
-                float turn_rate = 2.5f * dt;
+                float turn_rate = 5.0f * dt;
                 if (heading_diff > 0)
                     a.heading_deg += std::min(turn_rate, heading_diff);
                 else
