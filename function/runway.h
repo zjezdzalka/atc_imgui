@@ -16,6 +16,8 @@ struct Runway
 {
     std::string name;
     float heading_deg;
+
+    // Runway position
     float x;
     float y;
 };

@@ -1,12 +1,13 @@
 ﻿cmake_minimum_required(VERSION 3.15)
 project(imgui_radar LANGUAGES CXX)
 
+# C++17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(FetchContent)
 
-# --- GLFW ---
+# GLFW Download
 FetchContent_Declare(
   glfw
   GIT_REPOSITORY https://github.com/glfw/glfw.git
@@ -14,7 +15,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glfw)
 
-# --- ImGui ---
+# ImGui Download
 FetchContent_Declare(
   imgui
   GIT_REPOSITORY https://github.com/ocornut/imgui.git
@@ -22,7 +23,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
-# Utwórz bibliotekę z plików ImGui (z backendami GLFW + OpenGL3)
+# ImGui files (GLFW + OpenGL3), function header files
 add_library(imgui_build
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -45,14 +46,14 @@ add_library(imgui_build
         function/draw.h
 )
 
-# Dodaj ścieżki do nagłówków ImGui i GLFW (to właśnie naprawia Twój błąd!)
+# ImGui & GLFW Paths
 target_include_directories(imgui_build PUBLIC
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     ${glfw_SOURCE_DIR}/include
 )
 
-# Twój plik źródłowy
+# Generate .exe files for each C code.
 add_executable(imgui_radar main.cpp
         function/aircraft.h
         function/aircraft.cpp
@@ -69,10 +70,10 @@ add_executable(imgui_radar main.cpp
         function/draw.cpp
         function/draw.h)
 
-# Linkowanie
+# Linking
 target_link_libraries(imgui_radar imgui_build glfw)
 
-# Platform-specific libraries
+# Platform-specific libraries (Apple not operable yet)
 if (WIN32)
     target_link_libraries(imgui_radar
             opengl32
