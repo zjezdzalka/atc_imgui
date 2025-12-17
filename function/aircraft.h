@@ -72,4 +72,4 @@ struct Aircraft
 
 void generateAircraft(std::vector<Aircraft>& aircraft, Aircraft& a, float radar_range_km, int index);
 
-std::vector<Aircraft> generateInitialAircrafts(int count, float radar_range_km);
+std::vector<Aircraft> generateInitialAircraft(int count, float radar_range_km);

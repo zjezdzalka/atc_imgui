@@ -33,23 +33,77 @@ void DrawRunwaysAndILS(ImDrawList* draw_list, const std::vector<Runway>& runways
                        std::function<ImVec2(float,float)> world_to_screen)
 {
     ImU32 runway_color = IM_COL32(100, 150, 255, 255);
-    ImU32 ils_color    = IM_COL32(80, 120, 200, 150);
+    ImU32 ils_color = IM_COL32(80, 120, 200, 200);
+    ImU32 runway_line_color = IM_COL32(200, 200, 200, 255);
 
     for (const auto& rwy : runways)
     {
-        ImVec2 rwy_pos = world_to_screen(rwy.x, rwy.y);
+        // Calculate runway dimensions
+        float runway_length_km = 6.0f;
+        float runway_width_km = 0.09f;
 
-        // Draw runway marker
-        draw_list->AddText(ImVec2(rwy_pos.x + 12, rwy_pos.y - 8), runway_color, rwy.name.c_str());
+        // Convert heading to radians
+        float rwy_angle_rad = rwy.heading_deg * (3.14159265f / 180.0f);
+        float rwy_perp_angle_rad = rwy_angle_rad + (3.14159265f / 2.0f);
 
-        // Draw ILS localizer (6 km line in approach direction)
+        // Calculate half dimensions
+        float half_length = runway_length_km / 2.0f;
+        float half_width = runway_width_km / 2.0f;
+
+        // Calculate the four corners of the runway
+        ImVec2 corners[4];
+
+        // Front left
+        corners[0] = world_to_screen(
+            rwy.x + cosf(rwy_angle_rad) * half_length + cosf(rwy_perp_angle_rad) * half_width,
+            rwy.y + sinf(rwy_angle_rad) * half_length + sinf(rwy_perp_angle_rad) * half_width
+        );
+
+        // Front right
+        corners[1] = world_to_screen(
+            rwy.x + cosf(rwy_angle_rad) * half_length - cosf(rwy_perp_angle_rad) * half_width,
+            rwy.y + sinf(rwy_angle_rad) * half_length - sinf(rwy_perp_angle_rad) * half_width
+        );
+
+        // Back right
+        corners[2] = world_to_screen(
+            rwy.x - cosf(rwy_angle_rad) * half_length - cosf(rwy_perp_angle_rad) * half_width,
+            rwy.y - sinf(rwy_angle_rad) * half_length - sinf(rwy_perp_angle_rad) * half_width
+        );
+
+        // Back left
+        corners[3] = world_to_screen(
+            rwy.x - cosf(rwy_angle_rad) * half_length + cosf(rwy_perp_angle_rad) * half_width,
+            rwy.y - sinf(rwy_angle_rad) * half_length + sinf(rwy_perp_angle_rad) * half_width
+        );
+
+        // Draw runway rectangle
+        draw_list->AddQuadFilled(corners[0], corners[1], corners[2], corners[3], runway_color);
+        draw_list->AddQuad(corners[0], corners[1], corners[2], corners[3], runway_line_color, 1.0f);
+
+        // Draw runway name
+        ImVec2 text_size = ImGui::CalcTextSize(rwy.name.c_str());
+        ImVec2 text_pos = world_to_screen(rwy.x, rwy.y);
+        draw_list->AddText(text_pos, IM_COL32(255, 255, 255, 255), rwy.name.c_str());
+
+        // Draw ILS localizer - straight line, 30 km long
         float ils_angle = (rwy.heading_deg + 180.0f) * (3.14159265f / 180.0f); // Opposite direction
-        float ils_len = 6.0f;
+        float ils_len = 30.0f; // 30 km ILS
+
+        // ILS starts at runway threshold
+        ImVec2 ils_start = world_to_screen(
+            rwy.x - cosf(rwy_angle_rad) * half_length,
+            rwy.y - sinf(rwy_angle_rad) * half_length
+        );
+
+        // ILS end point
         ImVec2 ils_end = world_to_screen(
             rwy.x + cosf(ils_angle) * ils_len,
             rwy.y + sinf(ils_angle) * ils_len
         );
-        draw_list->AddLine(ils_end, rwy_pos, ils_color, 2.0f);
+
+        // Draw the ILS line
+        draw_list->AddLine(ils_start, ils_end, ils_color, 3.0f);
     }
 }
 

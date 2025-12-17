@@ -16,4 +16,4 @@
 void DrawEmergencyPanel(const Aircraft& sel);
 
 // Random emergencies
-void GenerateRandomEmergency(std::vector<Aircraft>& aircraft, float dt, float& timer, float interval = 20.0f);
+void GenerateRandomEmergency(std::vector<Aircraft>& aircraft, float dt, float& timer, float interval = 90.0f);

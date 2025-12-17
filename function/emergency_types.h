@@ -9,6 +9,7 @@
 
 #pragma once
 
+// Aircraft emergency type
 enum EmergencyType
 {
     EMERGENCY_NONE,

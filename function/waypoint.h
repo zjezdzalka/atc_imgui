@@ -15,7 +15,7 @@
 struct Waypoint
 {
     std::string name;
-    float x, y; // position in km
+    float x, y; // Position of waypoint
 };
 
 // Function declaration

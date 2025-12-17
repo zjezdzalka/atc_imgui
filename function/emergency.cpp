@@ -13,6 +13,7 @@
 
 void DrawEmergencyPanel(const Aircraft& sel)
 {
+    // Does not show when no emergency detected
     if (sel.emergency == EMERGENCY_NONE)
         return;
 
@@ -67,10 +68,10 @@ void GenerateRandomEmergency(std::vector<Aircraft>& aircraft, float dt, float& t
     if (timer < interval) return;
     timer = 0.0f;
 
-    // 15% chance to generate a random emergency
-    if (rand() % 100 >= 15 || aircraft.empty()) return;
+    // 5% chance to generate a random emergency
+    if (rand() % 100 >= 5 || aircraft.empty()) return;
 
-    // Find aircraft candidates without current emergency, not overflight, and not crashed
+    // Find aircraft without current emergency, not overflight, and not crashed
     std::vector<int> candidates;
     for (int i = 0; i < (int)aircraft.size(); ++i)
     {
@@ -97,22 +98,22 @@ void GenerateRandomEmergency(std::vector<Aircraft>& aircraft, float dt, float& t
     switch (random_ac.emergency)
     {
         case EMERGENCY_LOW_FUEL:
-            random_ac.emergency_timer = 240.0f + dist_to_airport * 8.0f;
+            random_ac.emergency_timer = 480.0f + dist_to_airport * 16.0f;
             random_ac.emergency_message = "Low fuel - requesting priority landing";
             random_ac.squawk_code = "7700";
             break;
         case EMERGENCY_MEDICAL:
-            random_ac.emergency_timer = 480.0f + dist_to_airport * 12.0f;
+            random_ac.emergency_timer = 960.0f + dist_to_airport * 24.0f;
             random_ac.emergency_message = "Medical emergency on board";
             random_ac.squawk_code = "7700";
             break;
         case EMERGENCY_ENGINE_FAILURE:
-            random_ac.emergency_timer = 150.0f + dist_to_airport * 4.0f;
+            random_ac.emergency_timer = 300.0f + dist_to_airport * 8.0f;
             random_ac.emergency_message = "Engine failure - declaring emergency";
             random_ac.squawk_code = "7700";
             break;
         case EMERGENCY_HYDRAULIC:
-            random_ac.emergency_timer = 320.0f + dist_to_airport * 10.0f;
+            random_ac.emergency_timer = 640.0f + dist_to_airport * 20.0f;
             random_ac.emergency_message = "Hydraulic system failure";
             random_ac.squawk_code = "7700";
             break;

@@ -26,28 +26,33 @@ using namespace std;
 
 int main(int, char**)
 {
+    // generation seed randomized
     srand((unsigned)time(nullptr));
 
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return 1;
 
-#if __APPLE__
-    const char* glsl_version = "#version 150";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-#else
-    const char* glsl_version = "#version 130";
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-#endif
+    #if __APPLE__
+        const char* glsl_version = "#version 150";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+    #else
+        const char* glsl_version = "#version 130";
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    #endif
+
+    // glfw init
 
     GLFWwindow* window = glfwCreateWindow(1280, 768, "Air Traffic Controller", nullptr, nullptr);
     if (window == nullptr) return 1;
 
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
+
+    // imgui init
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -57,68 +62,71 @@ int main(int, char**)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // Setup runways
+    // Data init
     std::vector<Runway> runways = createRunways();
-
-    // Setup waypoints
     std::vector<Waypoint> waypoints = createWaypoints();
 
-    // Wind
-    float wind_heading = (float)(rand() % 360);
-    float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
-
+    // Aircraft generation
     const int initial_count = 12;
-    std::vector<Aircraft> aircraft = generateInitialAircrafts(initial_count, radar_range_km);
+    std::vector<Aircraft> aircraft = generateInitialAircraft(initial_count, radar_range_km);
     int selected_index = -1;
 
+    // Basic information
     const float ALT_MAX = 23000.0f;
     const float ALT_MIN = 1600.0f;
     const float SPD_MIN = 80.0f;
     const float SPD_MAX = 300.0f;
+    float wind_heading = (float)(rand() % 360); // 0 - 360deg
+    float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
 
+    // Camera data
     float camera_x = 0.0f;
     float camera_y = 0.0f;
     float zoom_level = 1.0f;
     bool is_panning = false;
     ImVec2 last_mouse_pos;
-
     double last_time = glfwGetTime();
     float animation_speed = 1.0f; // Time multiplier
 
     const float right_panel_width = 450.0f;
 
-    // Zmienna do losowych awarii
+    // Random emergency generation
     float random_emergency_timer = 0.0f;
-    const float random_emergency_interval = 20.0f; // Co 20 sekund szansa na awarię
+    const float random_emergency_interval = 60.0f; // Emergency chance every 60 seconds
     int total_crash_count = 0;
 
+    // Check if window not closed or game isn't finished.
     while (!glfwWindowShouldClose(window))
     {
         double now = glfwGetTime();
         float dt = (float)(now - last_time) * animation_speed;
-        if (dt <= 0.0f) dt = 1.0f / 60.0f;
+        if (dt <= 0.0f) dt = 1.0f / 60.0f; // delta time
         last_time = now;
 
         int display_w, display_h;
         glfwGetFramebufferSize(window, &display_w, &display_h);
-
         glfwPollEvents();
 
-        // LOSOWE AWARIE PODCZAS GRY
+        // Random emergencies during game
         GenerateRandomEmergency(aircraft, dt, random_emergency_timer, random_emergency_interval);
 
-        // Update aircraft
+        // Update every aircraft
         for (size_t i = 0; i < aircraft.size(); ++i)
         {
             auto& a = aircraft[i];
 
-            // Jeśli samolot już się rozbił
+            const float max_alt_rate = 40.0f; // ft/s (~2000 fpm)
+            const float alt_accel = 4.0f; // ft/s²
+            const float max_speed_rate = 3.0f;
+            const float speed_accel = 0.5f;
+
+            // If plane is crashed
             if (a.is_crashed)
             {
                 a.crash_timer -= dt;
                 if (a.crash_timer <= 0.0f)
                 {
-                    // Usuń rozbity samolot po 5 sekundach
+                    // Delete plane from existance
                     aircraft.erase(aircraft.begin() + i);
                     i--;
 
@@ -130,14 +138,12 @@ int main(int, char**)
                     {
                         selected_index--;
                     }
-
-                    continue;
                 }
-                continue; // Pomiń dalsze aktualizacje dla rozbitych samolotów
+                continue; // Do not iterate over crashed aircraft
             }
 
             if (a.response_timer > 0.0f)
-                a.response_timer -= dt;
+                a.response_timer -= dt; // decrease wait until response
 
             // Update emergency timer
             if (a.emergency != EMERGENCY_NONE && !a.is_overflight)
@@ -145,13 +151,12 @@ int main(int, char**)
                 a.emergency_timer -= dt;
                 if (a.emergency_timer <= 0.0f)
                 {
-                    // SAMOLOT SIĘ ROZBIJA!
                     a.is_crashed = true;
-                    a.crash_timer = 5.0f; // Czas przez który efekt będzie widoczny
+                    a.crash_timer = 5.0f; // Crash time
                     a.crash_x = a.x;
                     a.crash_y = a.y;
                     total_crash_count++;
-                    continue; // Nie kontynuuj normalnych aktualizacji
+                    continue; // Do not update aircraft
                 }
             }
 
@@ -162,8 +167,7 @@ int main(int, char**)
                 {
                     if (a.has_pending_command)
                     {
-                        // Only reset command state / feedback
-
+                        // Reset values - no change in aircraft vals
                         a.target_altitude_ft = a.pending_altitude_ft;
                         a.target_heading_deg = a.pending_heading_deg;
                         a.target_speed_kts = a.pending_speed_kts;
@@ -173,15 +177,9 @@ int main(int, char**)
                 }
             }
 
-            const float max_alt_rate = 40.0f; // ft/s (~2000 fpm)
-            const float alt_accel = 4.0f; // ft/s²
-            const float max_speed_rate = 3.0f;
-            const float speed_accel = 0.5f;
-
+            // check altitude diff
             float alt_error = a.target_altitude_ft - a.altitude_ft;
-
-            // Close enough → snap & stop
-            if (fabs(alt_error) < 0.5f)
+            if (fabs(alt_error) < 0.5f) // close enough to set
             {
                 a.altitude_ft = a.target_altitude_ft;
                 a.altitude_rate_fps = 0.0f;
@@ -199,8 +197,6 @@ int main(int, char**)
                 float max_delta = alt_accel * dt;
 
                 a.altitude_rate_fps += std::clamp(rate_error, -max_delta, max_delta);
-
-                // Integrate altitude
                 float new_altitude = a.altitude_ft + a.altitude_rate_fps * dt;
 
                 // Prevent overshoot if target moved this frame

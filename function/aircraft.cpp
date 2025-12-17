@@ -16,6 +16,7 @@
 
 float Aircraft::distance2_to(const Aircraft& other) const
 {
+    // Calculate lateral distance to other aircraft
     float dx = x - other.x;
     float dy = y - other.y;
     return dx * dx + dy * dy;
@@ -23,6 +24,7 @@ float Aircraft::distance2_to(const Aircraft& other) const
 
 void Aircraft::initTargets()
 {
+    // default aircraft values
     target_altitude_ft = altitude_ft;
     target_heading_deg = heading_deg;
     target_speed_kts = speed_kts;
@@ -40,7 +42,7 @@ void Aircraft::setCommand(const std::string& response, float delay)
     if (is_overflight) return;
 
     last_response = response;
-    response_timer = 5.0f;
+    response_timer = 3.75f;
     command_delay = delay;
     has_pending_command = true;
 }
@@ -67,6 +69,7 @@ void generateAircraft(std::vector<Aircraft>& aircraft,
 
     const float r = ((float)rand() / RAND_MAX) * radar_range_km;
     const float theta = ((float)rand() / RAND_MAX) * 2.0f * IM_PI;
+
     a.x = cosf(theta) * r;
     a.y = sinf(theta) * r;
 
@@ -123,13 +126,13 @@ void generateAircraft(std::vector<Aircraft>& aircraft,
     }
 
     a.heading_deg = (float)(rand() % 72) * 5;
-    a.speed_kts = 130.0f + (rand() % 300);
+    a.speed_kts = 130.0f + (rand() % 180);
     a.selected = false;
 
     a.initTargets();
 }
 
-std::vector<Aircraft> generateInitialAircrafts(int count, float radar_range_km)
+std::vector<Aircraft> generateInitialAircraft(int count, float radar_range_km)
 {
     std::vector<Aircraft> aircraftList;
 

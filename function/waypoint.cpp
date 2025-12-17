@@ -6,6 +6,7 @@
 
 std::vector<Waypoint> createWaypoints()
 {
+    // Initialize basic waypoints
     std::vector<Waypoint> waypoints;
     waypoints.push_back({"ALPHA", 20.0f, 30.0f});
     waypoints.push_back({"BRAVO", -25.0f, 35.0f});
