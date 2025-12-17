@@ -306,7 +306,7 @@ int main(int, char**)
             {
                 if (aircraft[i].is_crashed || aircraft[j].is_crashed)
                 {
-                    continue; // Rozbite samoloty nie powodują konfliktów
+                    continue; // Crashed planes do not cause conflicts
                 }
 
                 float dx = aircraft[i].x - aircraft[j].x;
@@ -372,6 +372,7 @@ int main(int, char**)
             ImGui::IsMouseDown(1)
         );
 
+        // Check if should be panned
         if (should_pan)
         {
             if (!is_panning)
@@ -429,7 +430,7 @@ int main(int, char**)
         // Draw conflict lines
         DrawConflictLines(draw_list, aircraft, conflicts, world_to_screen);
 
-        // Selection
+        // Aircraft selection
         ImVec2 io_mouse = ImGui::GetMousePos();
         bool clicked = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && ImGui::IsMouseClicked(0) && !
             shift_held;
