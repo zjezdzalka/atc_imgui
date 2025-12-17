@@ -1,0 +1,20 @@
+//
+// Created by Natan on 12/14/2025.
+//
+
+#ifndef IMGUI_RADAR_EMERGENCY_TYPES_H
+#define IMGUI_RADAR_EMERGENCY_TYPES_H
+
+#endif //IMGUI_RADAR_EMERGENCY_TYPES_H
+
+#pragma once
+
+// Aircraft emergency type
+enum EmergencyType
+{
+    EMERGENCY_NONE,
+    EMERGENCY_LOW_FUEL,
+    EMERGENCY_MEDICAL,
+    EMERGENCY_ENGINE_FAILURE,
+    EMERGENCY_HYDRAULIC
+};

@@ -2,97 +2,146 @@
 // Created by rytui on 12/3/25.
 //
 
-#include<vector>
-#include<string>
-#include<iomanip>
-#include<cmath>
+#include "aircraft.h"
+#include "utils.h"
+
+#include <sstream>
+#include <iomanip>
+#include <cmath>
+#include <cstdlib>
 
 #ifndef IM_PI
 #define IM_PI 3.14159265358979323846f
 #endif
 
-struct Aircraft
+float Aircraft::distance2_to(const Aircraft& other) const
 {
-    std::string callsign;
-    // world position in kilometers relative to radar center (x east, y north)
-    float x = 0.0f;
-    float y = 0.0f;
-    float altitude_ft = 10000.0f;
-    float heading_deg = 0.0f; // 0 = east, +counterclockwise (so 90 = north)
-    float speed_kts = 250.0f; // knots
-    bool selected = false;
+    // Calculate lateral distance to other aircraft
+    float dx = x - other.x;
+    float dy = y - other.y;
+    return dx * dx + dy * dy;
+}
 
-    // Target values for gradual transition
-    float target_altitude_ft = 10000.0f;
-    float target_heading_deg = 0.0f;
-    float target_speed_kts = 250.0f;
+void Aircraft::initTargets()
+{
+    // default aircraft values
+    target_altitude_ft = altitude_ft;
+    target_heading_deg = heading_deg;
+    target_speed_kts = speed_kts;
 
-    // Pending target values (applied after delay)
-    float pending_altitude_ft = 10000.0f;
-    float pending_heading_deg = 0.0f;
-    float pending_speed_kts = 250.0f;
+    pending_altitude_ft = altitude_ft;
+    pending_heading_deg = heading_deg;
+    pending_speed_kts = speed_kts;
 
-    // Velocity/rate values for smooth transitions
-    float altitude_rate_fps = 0.0f; // feet per second
-    float speed_rate_kps = 0.0f; // knots per second
+    altitude_rate_fps = 0.0f;
+    speed_rate_kps = 0.0f;
+}
 
-    // Command acknowledgment system
-    std::string last_response = "";
-    float response_timer = 0.0f;
+void Aircraft::setCommand(const std::string& response, float delay)
+{
+    if (is_overflight) return;
 
-    // Delay before starting transition (reaction time)
-    float command_delay = 0.0f;
-    bool has_pending_command = false;
+    last_response = response;
+    response_timer = 3.75f;
+    command_delay = delay;
+    has_pending_command = true;
+}
 
-    // convenience
-    float distance2_to(const Aircraft& other) const
-    {
-        float dx = x - other.x;
-        float dy = y - other.y;
-        return dx * dx + dy * dy;
-    }
+void Aircraft::setImmediateResponse(const std::string& response, float duration)
+{
+    if (is_overflight) return;
 
-    // Initialize targets to current values
-    void initTargets()
-    {
-        target_altitude_ft = altitude_ft;
-        target_heading_deg = heading_deg;
-        target_speed_kts = speed_kts;
-        pending_altitude_ft = altitude_ft;
-        pending_heading_deg = heading_deg;
-        pending_speed_kts = speed_kts;
-        altitude_rate_fps = 0.0f;
-        speed_rate_kps = 0.0f;
-    }
+    last_response = response;
+    response_timer = duration;
 
-    // Set new command with acknowledgment
-    void setCommand(const std::string& response, float delay = 3.5f)
-    {
-        last_response = response;
-        response_timer = 5.0f; // Show response for 5 seconds
-        command_delay = delay;
-        has_pending_command = true;
+    command_delay = 0.0f;
+    has_pending_command = false;
+}
 
-        // DON'T overwrite pending values - they're set externally before calling setCommand
-    }
-};
-
-void generateAircraft(std::vector<Aircraft>& aircrafts, Aircraft& a, const float radar_range_km, const int i) {
+void generateAircraft(std::vector<Aircraft>& aircraft,
+                      Aircraft& a,
+                      float radar_range_km,
+                      int i)
+{
     std::ostringstream ss;
     ss << "AC" << std::setw(2) << std::setfill('0') << (i + 1);
     a.callsign = ss.str();
 
-    // random position in circle
     const float r = ((float)rand() / RAND_MAX) * radar_range_km;
     const float theta = ((float)rand() / RAND_MAX) * 2.0f * IM_PI;
+
     a.x = cosf(theta) * r;
     a.y = sinf(theta) * r;
 
-    a.altitude_ft = 1600.0f + (rand() % 430)*100;
-    a.heading_deg = (float)(rand() % 72)*5;
-    a.speed_kts = 130.0f + (rand() % 300); // 130..430 kts
+    // 10% chance of overflight
+    if (rand() % 100 < 10)
+    {
+        a.is_overflight = true;
+        a.altitude_ft = 32000.0f + (rand() % 111) * 100;
+        a.squawk_code = "----";
+    }
+    else
+    {
+        a.is_overflight = false;
+        a.altitude_ft = 1600.0f + (rand() % 215) * 100;
+        a.squawk_code = generateSquawkCode();
+
+        if (rand() % 100 < 2)
+        {
+            int emergency_type = rand() % 4;
+            a.emergency = (EmergencyType)(emergency_type + 1);
+
+            float dist_to_airport = sqrtf(a.x * a.x + a.y * a.y);
+
+            switch (a.emergency)
+            {
+            case EMERGENCY_LOW_FUEL:
+                a.emergency_timer = 240.0f + dist_to_airport * 8.0f;
+                a.emergency_message = "Low fuel - requesting priority landing";
+                a.squawk_code = "7700";
+                break;
+
+            case EMERGENCY_MEDICAL:
+                a.emergency_timer = 480.0f + dist_to_airport * 12.0f;
+                a.emergency_message = "Medical emergency on board";
+                a.squawk_code = "7700";
+                break;
+
+            case EMERGENCY_ENGINE_FAILURE:
+                a.emergency_timer = 150.0f + dist_to_airport * 4.0f;
+                a.emergency_message = "Engine failure - declaring emergency";
+                a.squawk_code = "7700";
+                break;
+
+            case EMERGENCY_HYDRAULIC:
+                a.emergency_timer = 320.0f + dist_to_airport * 10.0f;
+                a.emergency_message = "Hydraulic system failure";
+                a.squawk_code = "7700";
+                break;
+
+            default:
+                break;
+            }
+        }
+    }
+
+    a.heading_deg = (float)(rand() % 72) * 5;
+    a.speed_kts = 130.0f + (rand() % 180);
     a.selected = false;
 
-    // Initialize targets
     a.initTargets();
+}
+
+std::vector<Aircraft> generateInitialAircraft(int count, float radar_range_km)
+{
+    std::vector<Aircraft> aircraftList;
+
+    for (int i = 0; i < count; ++i)
+    {
+        Aircraft a;
+        generateAircraft(aircraftList, a, radar_range_km, i);
+        aircraftList.push_back(a);
+    }
+
+    return aircraftList;
 }
