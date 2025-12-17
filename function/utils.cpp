@@ -3,6 +3,7 @@
 //
 
 #include "utils.h"
+#include <sstream>
 #include <cmath>
 
 // Returns the shortest difference between two angles (-180..+180)
