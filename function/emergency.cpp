@@ -69,7 +69,7 @@ void GenerateRandomEmergency(std::vector<Aircraft>& aircraft, float dt, float& t
     timer = 0.0f;
 
     // 5% chance to generate a random emergency
-    if (rand() % 100 >= 5 || aircraft.empty()) return;
+    if (rand() % 100 >= 50 || aircraft.empty()) return;
 
     // Find aircraft without current emergency, not overflight, and not crashed
     std::vector<int> candidates;

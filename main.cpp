@@ -148,9 +148,9 @@ int main(int, char**)
         // Update every aircraft
         for (size_t i = 0; i < aircraft.size(); ++i)
         {
-            auto& a = aircraft[i];
+            Aircraft& a = aircraft[i];
 
-            const float max_alt_rate = 40.0f; // ft/s (~2000 fpm)
+            const float max_alt_rate = 40.0f; // ft/s (2400 fpm)
             const float alt_accel = 4.0f; // ft/s²
             const float max_speed_rate = 3.0f;
             const float speed_accel = 0.5f;
@@ -613,7 +613,7 @@ int main(int, char**)
                                    "Active: RWY %s", sel.ils_runway.c_str());
 
                 // Calculate glideslope deviation
-                for (const auto& rwy : runways)
+                for (const Runway& rwy : runways)
                 {
                     if (rwy.name == sel.ils_runway)
                     {
@@ -647,7 +647,7 @@ int main(int, char**)
             }
             else
             {
-                for (const auto& rwy : runways)
+                for (const Runway& rwy : runways)
                 {
                     std::string btn_label = "ILS RWY " + rwy.name;
                     if (ImGui::Button(btn_label.c_str(), ImVec2(-1, 0)))
