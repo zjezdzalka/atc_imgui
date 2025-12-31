@@ -21,8 +21,30 @@
 #include <string>
 #include <iomanip>
 #include <cfloat>
+#include <map>
 
 using namespace std;
+
+map<string, vector<float>> importAircraftData(short mode) {
+    // mode: 0 - from file
+    // mode: 1 - static
+
+    map<string, vector<float>> data;
+
+    // vector<string> = {ALT_MAX, ALT_MIN, SPD_MAX, SPD_MIN}
+
+    if (mode == 1) {
+        data["a320n"] = {23000.0f, 1600.0f, 80.0f, 300.0f};
+    }
+    else if (mode == 0) {
+        // read file
+    }
+    else {
+        data = {};
+    }
+
+    return data;
+};
 
 int main(int, char**)
 {
@@ -72,10 +94,23 @@ int main(int, char**)
     int selected_index = -1;
 
     // Basic information
-    const float ALT_MAX = 23000.0f;
-    const float ALT_MIN = 1600.0f;
-    const float SPD_MIN = 80.0f;
-    const float SPD_MAX = 300.0f;
+    map<string, vector<float>> aircraft_data = importAircraftData(1);
+
+    float ALT_MAX = 23000.0f;
+    float ALT_MIN = 1600.0f;
+    float SPD_MIN = 80.0f;
+    float SPD_MAX = 300.0f;
+
+    if (aircraft_data.size() == 1) {
+        ALT_MAX = aircraft_data["a320n"][0];
+        ALT_MIN = aircraft_data["a320n"][1];
+        SPD_MIN = aircraft_data["a320n"][2];
+        SPD_MAX = aircraft_data["a320n"][3];
+    }
+    else {
+        // we gotta make some shi up
+    }
+
     float wind_heading = (float)(rand() % 360); // 0 - 360deg
     float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
 
