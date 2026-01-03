@@ -44,7 +44,60 @@ map<string, vector<float>> importAircraftData(short mode) {
     }
 
     return data;
-};
+}
+
+map<string, string> initCallsigns(short mode){
+    // mode: 0 - from file
+    // mode: 1 - static
+
+    map<string, string> data;
+
+    // vector<string> = {ALT_MAX, ALT_MIN, SPD_MAX, SPD_MIN}
+
+    if (mode == 1) {
+        data["LOT"] = "POLLOT";
+        data["DLH"] = "LUFTHANSA";
+        data["WZZ"] = "WIZZAIR";
+    }
+    else if (mode == 0) {
+        // read file
+    }
+    else {
+        data = {};
+    }
+
+    return data;
+}
+
+map<string, vector<string>> importAirportAirlines(short mode){
+    // mode: 0 - from file
+    // mode: 1 - static
+
+    map<string, vector<string>> data;
+
+    // vector<string> = {ALT_MAX, ALT_MIN, SPD_MAX, SPD_MIN}
+
+    if (mode == 1) {
+        data["EPPO"] = {
+            "LOT", "DLH", "WZZ"
+        };
+    }
+    else if (mode == 0) {
+        // read file
+    }
+    else {
+        data = {};
+    }
+
+    return data;
+}
+
+pair<float,float> generateWind(){
+    float wind_heading = (float)(rand() % 360); // 0 - 360deg
+    float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
+
+    return make_pair(wind_heading, wind_speed_kts);
+}
 
 int main(int, char**)
 {
@@ -111,8 +164,10 @@ int main(int, char**)
         // we gotta make some shi up
     }
 
-    float wind_heading = (float)(rand() % 360); // 0 - 360deg
-    float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
+    pair<float, float> wind = generateWind();
+    // wind[0] - heading
+    // wind[1] - speed
+
 
     // Camera data
     float camera_x = 0.0f;
@@ -537,7 +592,7 @@ int main(int, char**)
         ImGui::SliderFloat("##speed", &animation_speed, 0.1f, 5.0f, "%.1fx");
 
         ImGui::Dummy(ImVec2(0, 5));
-        ImGui::Text("Wind: %03.0f° at %.0f kts", wind_heading, wind_speed_kts);
+        ImGui::Text("Wind: %03.0f° at %.0f kts", wind[0], wind[1]);
 
         ImGui::Dummy(ImVec2(0, 10));
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "CAMERA CONTROLS");
