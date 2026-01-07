@@ -141,7 +141,7 @@ int main(int, char**)
     vector<Waypoint> waypoints = createWaypoints();
 
     // Aircraft generation
-    const int initial_count = 12;
+    constexpr int initial_count = 12;
     vector<Aircraft> aircraft = generateInitialAircraft(initial_count, radar_range_km);
     int selected_index = -1;
 
@@ -177,18 +177,21 @@ int main(int, char**)
     double last_time = glfwGetTime();
     float animation_speed = 1.0f; // Time multiplier
 
-    // right panel side width 450px
-    const float right_panel_width = 450.0f;
-
     // Random emergency generation
     float random_emergency_timer = 0.0f;
     const float random_emergency_interval = 60.0f; // Emergency chance every 60 seconds
+
+    /*int total_landed = 0;
+    int total_departed = 0;*/
     int total_crash_count = 0;
 
     // Check if window not closed or game isn't finished.
     while (!glfwWindowShouldClose(window))
     {
         // this while loop runs 1 frame of game
+
+        // right panel side width 450px
+        constexpr float right_panel_width = 450.0f;
 
         double now = glfwGetTime();
         float dt = (float)(now - last_time) * animation_speed; // delta time
@@ -266,11 +269,6 @@ int main(int, char**)
             // check altitude diff
             float alt_error = a.target_altitude_ft - a.altitude_ft;
 
-            const float max_alt_rate = 40.0f; // ft/s (2400 fpm)
-            const float alt_accel = 4.0f; // ft/s²
-            const float max_speed_rate = 3.0f;
-            const float speed_accel = 0.5f;
-
             if (fabs(alt_error) < 0.5f) // close enough to set
             {
                 a.altitude_ft = a.target_altitude_ft;
@@ -278,6 +276,8 @@ int main(int, char**)
             }
             else
             {
+                constexpr float max_alt_rate = 40.0f;
+                constexpr float alt_accel = 4.0f;
                 // Desired vertical speed using braking distance logic
                 float stopping_speed = sqrtf(2.0f * alt_accel * fabs(alt_error));
                 float desired_rate =
@@ -329,6 +329,8 @@ int main(int, char**)
             float speed_diff = a.target_speed_kts - a.speed_kts;
             if (fabs(speed_diff) > 0.5f)
             {
+                constexpr float speed_accel = 0.5f;
+                constexpr float max_speed_rate = 3.0f;
                 float desired_rate = 0.0f;
                 float distance_factor = sqrtf(2.0f * speed_accel * fabs(speed_diff));
 
@@ -387,9 +389,9 @@ int main(int, char**)
         }
 
         // Conflict detection data
-        const float conflict_horiz_km = 5.0f;
-        const float conflict_horiz_km2 = conflict_horiz_km * conflict_horiz_km; // why is this squared huuuuh to check
-        const float conflict_vert_ft = 1000.0f;
+        constexpr float conflict_horiz_km = 5.0f;
+        constexpr float conflict_horiz_km2 = conflict_horiz_km * conflict_horiz_km; // why is this squared huuuuh, to check
+        constexpr float conflict_vert_ft = 1000.0f;
 
         // Calculate whether there are conflicts between planes (bubble sort ahh algorithm)
         vector<pair<int, int>> conflicts;
@@ -985,7 +987,7 @@ int main(int, char**)
             static char command_buf[128] = "";
             static string command_feedback;
             static vector<string> history;
-            static int history_index = -1;
+            static int history_index = -1; // what is this needed for???
             static float command_feedback_timer = 0.0f;
 
             ImGui::Separator();
@@ -1086,7 +1088,7 @@ int main(int, char**)
                     sel.command_delay = 3.5f; // same as heading buttons
 
                     float diff = angle_difference(sel.pending_heading_deg, old_pending);
-                    if (diff < 0) diff = -diff;
+                    if (diff < 0) diff = diff * (-1);
 
                     ostringstream response;
                     response << "Turning to heading " << (int)hdg;
