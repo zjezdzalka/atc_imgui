@@ -92,8 +92,8 @@ map<string, vector<string>> importAirportAirlines(short mode){
 }
 
 pair<float,float> generateWind(){
-    int wind_heading = (rand() % 360); // 0 - 360deg
-    int wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
+    float wind_heading = (rand() % 360); // 0 - 360deg
+    float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
 
     return make_pair(wind_heading, wind_speed_kts);
 }
