@@ -1,3 +1,4 @@
+// [file name]: main.cpp
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -9,6 +10,7 @@
 #include "function/runway.h"
 #include "function/waypoint.h"
 #include "function/draw.h"
+#include "function/ils_system.h"
 
 #include <GLFW/glfw3.h>
 #include <cstdio>
@@ -145,6 +147,9 @@ int main(int, char**)
     vector<Aircraft> aircraft = generateInitialAircraft(initial_count, radar_range_km);
     int selected_index = -1;
 
+    // Store ILS info for each aircraft
+    map<int, ILSInfo> aircraft_ils_info;
+
     // Basic information
     map<string, vector<float>> aircraft_data = importAircraftData(1);
 
@@ -220,13 +225,27 @@ int main(int, char**)
                 a.crash_timer -= dt;
                 if (a.crash_timer <= 0.0f)
                 {
-                    // Delete plane from existance
-                    aircraft.erase(aircraft.begin() + i);
+
+                    int erased_idx = (int)i;
+                    aircraft.erase(aircraft.begin() + erased_idx);
                     i--;
 
-                    // if plane is selected remove selection
-                    if (selected_index == (int)i) selected_index = -1;
-                    else if (selected_index > (int)i) selected_index--; // else choose the lowest
+                    // Shift ILS map keys: drop the erased entry, decrement all higher keys
+                    {
+                        map<int, ILSInfo> shifted;
+                        for (map<int,ILSInfo>::iterator it = aircraft_ils_info.begin();
+                             it != aircraft_ils_info.end(); ++it)
+                        {
+                            if (it->first == erased_idx) continue;       // drop erased aircraft
+                            int new_key = (it->first > erased_idx) ? it->first - 1 : it->first;
+                            shifted[new_key] = it->second;
+                        }
+                        aircraft_ils_info = shifted;
+                    }
+
+                    // Update selected index
+                    if (selected_index == erased_idx)      selected_index = -1;
+                    else if (selected_index > erased_idx)  selected_index--;
                 }
                 continue; // Do not iterate over crashed aircraft
             }
@@ -244,7 +263,11 @@ int main(int, char**)
                     a.crash_timer = 5.0f; // Crash time
                     a.crash_x = a.x;
                     a.crash_y = a.y;
-                    total_crash_count++;
+                    if (!aircraft_ils_info[i].has_landed)
+                        total_crash_count++;
+
+                    // Clean up ILS info
+                    aircraft_ils_info.erase(i);
                     continue; // Do not update aircraft
                 }
             }
@@ -264,6 +287,38 @@ int main(int, char**)
                         a.has_pending_command = false;
                     }
                 }
+            }
+
+            // ILS Approach handling
+            if (a.ils_active && !a.is_crashed) {
+                // Create ILS info entry on first frame only
+                if (!aircraft_ils_info.count(i)) {
+                    aircraft_ils_info[i] = ILSInfo();
+                    aircraft_ils_info[i].is_intercepting = true;
+                }
+
+                // Find the matching runway and run the ILS update
+                for (const Runway& rwy : runways) {
+                    if (rwy.name == a.ils_runway) {
+                        updateILSApproach(a, rwy, aircraft_ils_info[i], dt);
+
+                        // Crash triggered inside updateILSApproach (out-of-airspace / overshot)
+                        if (a.is_crashed && !aircraft_ils_info[i].has_landed) {
+                            total_crash_count++;
+                            aircraft_ils_info.erase(i);
+                        }
+
+                        // Landing deactivated ILS inside updateILSApproach
+                        if (!a.ils_active) {
+                            aircraft_ils_info.erase(i);
+                        }
+
+                        break;
+                    }
+                }
+            } else if (!a.ils_active) {
+                // Only clear ILS info when ILS is explicitly disabled
+                aircraft_ils_info.erase(i);
             }
 
             // check altitude diff
@@ -507,11 +562,92 @@ int main(int, char**)
         // Draw runways and ILS
         DrawRunwaysAndILS(draw_list, runways, world_to_screen);
 
+        // Draw ILS localizer feathers for each runway
+        {
+            const float LOCALIZER_LENGTH_KM = 25.0f;   // how far the centerline extends
+            const float LOCALIZER_HALF_WIDTH_DEG = 2.5f; // half-angle of the funnel
+            const int   DASH_COUNT = 12;                 // dashes on the centerline
+
+            for (const Runway& rwy : runways)
+            {
+                // Inbound course: heading aircraft flies to land (math convention)
+                float inbound_deg = fmodf(rwy.heading_deg + 180.0f + 360.0f, 360.0f);
+                float inbound_rad = deg_to_rad(inbound_deg);
+
+                // Unit vector pointing AWAY from runway along the inbound course
+                // (aircraft come from this direction, so we draw the funnel here)
+                float ix = cosf(inbound_rad);
+                float iy = sinf(inbound_rad);
+
+                // -- Threshold diamond --
+                ImVec2 sc = world_to_screen(rwy.x, rwy.y);
+                float diamond_size = 6.0f;
+                ImVec2 d_top   (sc.x,                sc.y - diamond_size);
+                ImVec2 d_right (sc.x + diamond_size, sc.y);
+                ImVec2 d_bot   (sc.x,                sc.y + diamond_size);
+                ImVec2 d_left  (sc.x - diamond_size, sc.y);
+                ImU32 col_ils = IM_COL32(100, 200, 255, 220);
+                draw_list->AddQuad(d_top, d_right, d_bot, d_left, col_ils, 1.5f);
+
+                // -- Runway label --
+                float label_x = rwy.x + ix * 1.5f;
+                float label_y = rwy.y + iy * 1.5f;
+                ImVec2 label_pos = world_to_screen(label_x, label_y);
+                char rwy_label[16];
+                snprintf(rwy_label, sizeof(rwy_label), "ILS %s", rwy.name.c_str());
+                draw_list->AddText(ImVec2(label_pos.x + 6.0f, label_pos.y - 8.0f),
+                                   IM_COL32(100, 200, 255, 200), rwy_label);
+
+                // -- Dashed centerline extending outward --
+                float dash_step = LOCALIZER_LENGTH_KM / (float)(DASH_COUNT * 2 - 1);
+                for (int d = 0; d < DASH_COUNT; ++d)
+                {
+                    float t0 = (float)(d * 2)     * dash_step;
+                    float t1 = (float)(d * 2 + 1) * dash_step;
+                    float wx0 = rwy.x + ix * t0;
+                    float wy0 = rwy.y + iy * t0;
+                    float wx1 = rwy.x + ix * t1;
+                    float wy1 = rwy.y + iy * t1;
+                    draw_list->AddLine(world_to_screen(wx0, wy0),
+                                       world_to_screen(wx1, wy1),
+                                       IM_COL32(100, 200, 255, 120), 1.0f);
+                }
+
+                // -- Funnel side lines (30-degree capture zone shown as two lines) --
+                float left_deg  = inbound_deg + 30.0f;
+                float right_deg = inbound_deg - 30.0f;
+                float left_rad  = deg_to_rad(left_deg);
+                float right_rad = deg_to_rad(right_deg);
+
+                // Funnel narrows: full width at far end, zero at threshold
+                // We draw a solid line from threshold to tip of funnel
+                float funnel_km = 15.0f;
+                float lx_end = rwy.x + cosf(left_rad)  * funnel_km;
+                float ly_end = rwy.y + sinf(left_rad)  * funnel_km;
+                float rx_end = rwy.x + cosf(right_rad) * funnel_km;
+                float ry_end = rwy.y + sinf(right_rad) * funnel_km;
+
+                ImU32 col_funnel = IM_COL32(100, 200, 255, 60);
+                draw_list->AddLine(sc, world_to_screen(lx_end, ly_end), col_funnel, 1.0f);
+                draw_list->AddLine(sc, world_to_screen(rx_end, ry_end), col_funnel, 1.0f);
+
+                // Faint filled triangle for the capture zone
+                draw_list->AddTriangleFilled(
+                    sc,
+                    world_to_screen(lx_end, ly_end),
+                    world_to_screen(rx_end, ry_end),
+                    IM_COL32(100, 200, 255, 12));
+            }
+        }
+
         // Draw waypoints
         DrawWaypoints(draw_list, waypoints, world_to_screen);
 
+
+        float old_animation_speed = -1;
+
         // Radar sweep
-        DrawRadarSweep(draw_list, radar_range_km, animation_speed, world_to_screen);
+        DrawRadarSweep(draw_list, radar_range_km, animation_speed, world_to_screen, old_animation_speed);
 
         // Draw axes
         DrawRadarAxes(draw_list, radar_range_km, world_to_screen, col_green);
@@ -520,7 +656,7 @@ int main(int, char**)
         DrawCrashEffects(draw_list, aircraft, world_to_screen);
 
         // Draw aircraft
-        DrawAircraft(draw_list, aircraft, conflicts, world_to_screen, selected_index, win_pos, win_size);
+        DrawAircraft(draw_list, aircraft, conflicts, world_to_screen, selected_index, win_pos, win_size, zoom_level);
 
         // Draw conflict lines
         DrawConflictLines(draw_list, aircraft, conflicts, world_to_screen);
@@ -665,12 +801,51 @@ int main(int, char**)
             ImGui::Dummy(ImVec2(0, 10));
             ImGui::Separator();
 
-            // ILS Selection
+            // ILS Selection and Status
             ImGui::Text("ILS Approach:");
             if (sel.ils_active)
             {
                 ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f),
                                    "Active: RWY %s", sel.ils_runway.c_str());
+
+                // Display ILS status if available
+                if (aircraft_ils_info.count(selected_index)) {
+                    ILSInfo& info = aircraft_ils_info[selected_index];
+                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "%s",
+                                      getILSStatusMessage(info).c_str());
+
+                    // Show deviation indicators
+                    if (info.established_localizer) {
+                        float deviation = info.localizer_deviation;
+                        ImGui::Text("Localizer: ");
+                        ImGui::SameLine();
+                        if (fabs(deviation) < 0.5f) {
+                            ImGui::TextColored(ImVec4(0,1,0,1), "● CENTERED");
+                        } else if (deviation < 0) {
+                            ImGui::TextColored(ImVec4(1,1,0,1), "◀ LEFT %.1f°", -deviation);
+                        } else {
+                            ImGui::TextColored(ImVec4(1,1,0,1), "RIGHT %.1f° ▶", deviation);
+                        }
+                    }
+
+                    if (info.established_glideslope) {
+                        float gs_dev = info.glideslope_deviation;
+                        ImGui::Text("Glideslope: ");
+                        ImGui::SameLine();
+                        if (fabs(gs_dev) < 100) {
+                            ImGui::TextColored(ImVec4(0,1,0,1), "● ON PATH");
+                        } else if (gs_dev > 0) {
+                            ImGui::TextColored(ImVec4(1,0.5f,0,1), "↑ HIGH %.0f ft", gs_dev);
+                        } else {
+                            ImGui::TextColored(ImVec4(1,0,0,1), "↓ LOW %.0f ft", -gs_dev);
+                        }
+                    }
+
+                    // Show turn count during interception
+                    if (info.is_intercepting && !info.established_localizer) {
+                        ImGui::Text("Interception turns: %d/5", info.turn_count);
+                    }
+                }
 
                 // Calculate glideslope deviation
                 for (const Runway& rwy : runways)
@@ -679,7 +854,7 @@ int main(int, char**)
                     {
                         float dist_to_rwy = sqrtf((sel.x - rwy.x) * (sel.x - rwy.x) +
                             (sel.y - rwy.y) * (sel.y - rwy.y));
-                        float expected_alt_ft = dist_to_rwy * 1000.0f * tanf(deg_to_rad(3.0f)) * 3.28084f;
+                        float expected_alt_ft = dist_to_rwy * 1000.0f * tanf(deg_to_rad(3.0f)) * 3.28084f + 100.0f;
                         float deviation = sel.altitude_ft - expected_alt_ft;
 
                         if (deviation > 200.0f)
@@ -702,6 +877,7 @@ int main(int, char**)
                 {
                     sel.ils_active = false;
                     sel.ils_runway = "";
+                    aircraft_ils_info.erase(selected_index);
                     sel.setCommand("ILS approach canceled");
                 }
             }
@@ -710,13 +886,29 @@ int main(int, char**)
                 for (const Runway& rwy : runways)
                 {
                     string btn_label = "ILS RWY " + rwy.name;
-                    if (ImGui::Button(btn_label.c_str(), ImVec2(-1, 0)))
-                    {
-                        sel.ils_active = true;
-                        sel.ils_runway = rwy.name;
-                        ostringstream r;
-                        r << "Roger, cleared ILS approach runway " << rwy.name;
-                        sel.setCommand(r.str());
+
+                    // Check if intercept is possible
+                    bool can_intercept = canInterceptLocalizer(sel, rwy);
+
+                    if (can_intercept) {
+                        if (ImGui::Button(btn_label.c_str(), ImVec2(-1, 0)))
+                        {
+                            sel.ils_active = true;
+                            sel.ils_runway = rwy.name;
+                            sel.has_pending_command = false;
+                            sel.command_delay       = 0.0f;
+                            ostringstream r;
+                            r << "Cleared ILS approach runway " << rwy.name << ", intercept angle "
+                              << (int)getInterceptAngle(sel, rwy) << " degrees";
+                            sel.setCommand(r.str());
+                        }
+                    } else {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.1f, 0.1f, 0.6f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.6f, 0.1f, 0.1f, 0.8f));
+                        if (ImGui::Button((btn_label + "##disabled").c_str(), ImVec2(-1, 0))) {
+                            sel.setImmediateResponse("Unable to clear ILS - intercept angle too steep (max 30°)", 4.0f);
+                        }
+                        ImGui::PopStyleColor(2);
                     }
                 }
             }

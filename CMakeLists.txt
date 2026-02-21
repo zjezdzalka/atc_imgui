@@ -36,6 +36,8 @@ add_executable(imgui_radar
         function/runway.cpp
         function/waypoint.cpp
         function/draw.cpp
+        function/ils_system.h
+        function/ils_system.cpp
 )
 
 target_link_libraries(imgui_radar imgui glfw)
