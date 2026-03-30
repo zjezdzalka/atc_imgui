@@ -91,7 +91,7 @@ void DrawRunwaysAndILS(ImDrawList* draw_list, const std::vector<Runway>& runways
 
         // Draw ILS localizer - straight line, 30 km long
         float ils_angle = (rwy.heading_deg + 180.0f) * (3.14159265f / 180.0f); // Opposite direction
-        float ils_len = 30.0f; // 30 km ILS
+        float ils_len = 45.0f; // 45 km ILS
 
         // ILS starts at runway threshold
         ImVec2 ils_start = world_to_screen(
