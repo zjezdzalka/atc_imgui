@@ -219,6 +219,17 @@ int main(int, char**)
             // check if crashed -> response timer -> emergency timer -> command_delay ->
             Aircraft& a = aircraft[i];
 
+            if (a.is_on_ground) {
+                a.landing_timer -= dt;
+
+                if (a.landing_timer <= 0.0f) {
+                    int erased_idx = (int)i;
+                    aircraft.erase(aircraft.begin() + erased_idx);
+                    i--;
+                }
+                continue;
+            }
+
             // If plane is crashed
             if (a.is_crashed)
             {
@@ -724,6 +735,7 @@ int main(int, char**)
 
         ImGui::Text("Aircraft: %zu", aircraft.size());
         ImGui::Text("Conflicts: %zu", conflicts.size());
+        ImGui::Text("Planes Landed: %d", planes_landed_count);
 
         // Count crashes
         ImGui::Text("Crashes: %d", total_crash_count);
@@ -881,8 +893,7 @@ int main(int, char**)
                     sel.setCommand("ILS approach canceled");
                 }
             }
-            else
-            {
+            else {
                 for (const Runway& rwy : runways)
                 {
                     string btn_label = "ILS RWY " + rwy.name;
@@ -900,13 +911,20 @@ int main(int, char**)
                             ostringstream r;
                             r << "Cleared ILS approach runway " << rwy.name << ", intercept angle "
                               << (int)getInterceptAngle(sel, rwy) << " degrees";
-                            sel.setCommand(r.str());
+                            // Use immediate response - no pending command delay
+                            // so the ILS heading guidance isn't overwritten when the delay fires
+                            sel.setImmediateResponse(r.str(), 5.0f);
                         }
                     } else {
                         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.1f, 0.1f, 0.6f));
                         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.6f, 0.1f, 0.1f, 0.8f));
                         if (ImGui::Button((btn_label + "##disabled").c_str(), ImVec2(-1, 0))) {
-                            sel.setImmediateResponse("Unable to clear ILS - intercept angle too steep (max 30°)", 4.0f);
+                            // Calculate the required heading to intercept
+                            float inbound = inbound_course(rwy);
+                            float current_hdg = sel.heading_deg;
+                            float diff = fabsf(angle_difference(inbound, current_hdg));
+                            sel.setImmediateResponse("Unable to clear ILS - intercept angle too steep (" +
+                                                    std::to_string((int)diff) + "°, max 30°)", 4.0f);
                         }
                         ImGui::PopStyleColor(2);
                     }
@@ -1059,12 +1077,9 @@ int main(int, char**)
                 }
             }
 
-            ImGui::Separator();
-            // === HEADING ===
             ImGui::Text("Heading: %.0f°", fmodf(450.0f - sel.heading_deg, 360.0f));
 
-            // Display target heading if different
-            if (fabs(angle_difference(sel.target_heading_deg, sel.heading_deg)) > 1.0f)
+            if (fabs(angle_difference(sel.target_heading_deg, sel.heading_deg)) > 0.5f)
             {
                 ImGui::SameLine();
                 ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f),

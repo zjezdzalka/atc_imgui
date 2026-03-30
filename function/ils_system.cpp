@@ -1,39 +1,7 @@
 // ils_system.cpp
 
-// ================================================================
-// COORDINATE SYSTEM — read this before touching anything
-// ================================================================
-// heading_deg is in MATH convention:
-//   0 deg  = East  (+X)    90 deg = North (+Y)
-//  180 deg = West  (-X)   270 deg = South (-Y)
-//  Angles increase counter-clockwise.
-//
-// Position update in main.cpp:
-//   x += cosf(deg_to_rad(heading_deg)) * speed * dt;
-//   y += sinf(deg_to_rad(heading_deg)) * speed * dt;
-//
-// Runway heading_deg = the direction the runway FACES (math convention).
-//   RWY 27: heading=180 (faces West).  Aircraft FLY EAST (0 deg) to land.
-//   RWY 09: heading=0   (faces East).  Aircraft FLY WEST (180 deg) to land.
-//
-// INBOUND COURSE = rwy.heading_deg + 180, wrapped to [0,360).
-// That is the heading an aircraft must fly to approach and land.
-//
-// Runway positions from runway.cpp:
-//   RWY 27: x=-1, y=-1    RWY 09: x=1, y=1
-//
-// Aircraft approaching RWY 27 (flying East) come from the WEST,
-// i.e. their x is LESS than rwy.x (-1).  The inbound unit vector
-// is East = (1,0), so (aircraft - runway) dotted with (1,0)
-// = (a.x - rwy.x) which is negative for approach aircraft.
-// Therefore "aircraft is on approach side" means along_track < 0,
-// NOT > 0.  (The aircraft approaches from behind the threshold
-// in the direction the runway faces, not in front of it.)
-// ================================================================
-
 #include "ils_system.h"
 #include "utils.h"
-
 #include <cmath>
 #include <sstream>
 #include <iomanip>
@@ -43,63 +11,100 @@
 #define IM_PI 3.14159265358979323846f
 #endif
 
-// ----------------------------------------------------------------
-// Static helpers
-// ----------------------------------------------------------------
+int planes_landed_count = 0;
 
 static float wrap360(float a)
 {
     return fmodf(a + 360.0f, 360.0f);
 }
 
-// Math-convention bearing FROM (ax,ay) TOWARD (bx,by), [0,360)
+// Bearing FROM (ax,ay) TOWARD (bx,by)
 static float bearing_toward(float ax, float ay, float bx, float by)
 {
-    return wrap360(rad_to_deg(atan2f(by - ay, bx - ax)));
+    float dx = bx - ax;
+    float dy = by - ay;
+    return wrap360(rad_to_deg(atan2f(dy, dx)));
 }
 
-// Inbound course: heading aircraft must fly to land on this runway
-static float inbound_course(const Runway& rwy)
+// Inbound course: the heading the aircraft must fly to land.
+// runway.h stores heading_deg as the direction the runway FACES (threshold to far end).
+//   RWY 27: heading_deg=180 (faces West), aircraft land flying East  -> inbound = 0°  (math)
+//   RWY 09: heading_deg=0   (faces East), aircraft land flying West  -> inbound = 180° (math)
+// Aircraft approach from the OPPOSITE direction, so inbound = heading_deg + 180.
+// Inbound course: the heading the aircraft must fly to land.
+// A plane landing on RWY 09 flies East (0°). A plane landing on RWY 27 flies West (180°).
+float inbound_course(const Runway& rwy)
 {
-    return wrap360(rwy.heading_deg + 180.0f);
+    return wrap360(rwy.heading_deg);
 }
 
-// Signed cross-track distance (km) from aircraft to runway centerline.
-// The centerline extends in the INBOUND direction from the runway.
-//
-// Sign convention (from the pilot's seat flying inbound):
-//   Positive = aircraft is to the LEFT  of centerline -> must turn RIGHT
-//   Negative = aircraft is to the RIGHT of centerline -> must turn LEFT
-//
-// Derivation: inbound unit vector L = (cos(inbound), sin(inbound))
-// Aircraft vector from runway: R = (a.x-rwy.x, a.y-rwy.y)
-// Cross product (2D): R x L = Rx*Ly - Ry*Lx
-// When flying East (inbound=0): L=(1,0), cross = Rx*0 - Ry*1 = -Ry
-//   Aircraft north of centerline (Ry>0): cross=-Ry<0 => that would mean RIGHT.
-//   But north IS left when flying East. So the sign must be FLIPPED.
-// Therefore: cross_track = Ry*Lx - Rx*Ly  (opposite of the "standard" formula)
-static float cross_track_km(const Aircraft& a, const Runway& rwy)
+// Distance from aircraft to runway
+static float distance_to_runway(const Aircraft& a, const Runway& rwy)
 {
-    float rad = deg_to_rad(inbound_course(rwy));
-    float lx  = cosf(rad);
-    float ly  = sinf(rad);
-    float rx  = a.x - rwy.x;
-    float ry  = a.y - rwy.y;
-    // Corrected sign: positive = LEFT of inbound centerline
-    return ry * lx - rx * ly;
+    float dx = rwy.x - a.x;
+    float dy = rwy.y - a.y;
+    return sqrtf(dx*dx + dy*dy);
 }
 
-// Along-track distance from runway threshold in the INBOUND direction.
-// Aircraft on correct approach side are coming from BEHIND the threshold
-// (opposite to inbound direction), so this returns NEGATIVE for them.
-static float along_track_km(const Aircraft& a, const Runway& rwy)
+// Cross-track error: how far off the centerline (km)
+static float cross_track_error(const Aircraft& a, const Runway& rwy)
 {
-    float rad = deg_to_rad(inbound_course(rwy));
-    float lx  = cosf(rad);
-    float ly  = sinf(rad);
-    float rx  = a.x - rwy.x;
-    float ry  = a.y - rwy.y;
-    return rx * lx + ry * ly;
+    float course = inbound_course(rwy);
+    float course_rad = deg_to_rad(course);
+
+    // Direction vector of the approach path (from runway outward)
+    float lx = cosf(course_rad);
+    float ly = sinf(course_rad);
+
+    // Vector from runway to aircraft
+    float rx = rwy.x - a.x;
+    float ry = rwy.y - a.y;
+
+    // Perpendicular distance to the centerline
+    return fabsf(rx * ly - ry * lx);
+}
+
+// Which side of the centerline (positive = left)
+static float cross_track_signed(const Aircraft& a, const Runway& rwy)
+{
+    float course = inbound_course(rwy);
+    float course_rad = deg_to_rad(course);
+
+    float lx = cosf(course_rad);
+    float ly = sinf(course_rad);
+
+    float rx = a.x - rwy.x;
+    float ry = a.y - rwy.y;
+
+    return lx * ry - ly * rx;
+}
+
+// Check if aircraft is approaching from the correct side
+static bool is_approaching_correctly(const Aircraft& a, const Runway& rwy)
+{
+    float course = inbound_course(rwy);
+    float dir_to_rwy = bearing_toward(a.x, a.y, rwy.x, rwy.y);
+
+    // The direction to the runway should be roughly opposite of where we want to go?
+    // Actually, we want the aircraft to be generally pointing toward the runway area
+    float heading_diff = fabsf(angle_difference(a.heading_deg, dir_to_rwy));
+
+    // Aircraft should be pointing within 90° of the runway
+    bool pointing_toward = (heading_diff <= 90.0f);
+
+    // Also check if we're not past the runway
+    float course_rad = deg_to_rad(course);
+    float lx = cosf(course_rad);
+    float ly = sinf(course_rad);
+    float rx = a.x - rwy.x;
+    float ry = a.y - rwy.y;
+    float along = rx * lx + ry * ly;
+
+    // along > 0: aircraft is displaced in the inbound direction from the runway
+    // = aircraft is on the correct approach side (not yet past the threshold).
+    bool in_front = (along > 0.0f);
+
+    return pointing_toward && in_front;
 }
 
 // ----------------------------------------------------------------
@@ -108,16 +113,32 @@ static float along_track_km(const Aircraft& a, const Runway& rwy)
 
 bool canInterceptLocalizer(const Aircraft& a, const Runway& rwy)
 {
-    // Intercept angle = how far the aircraft heading differs from the inbound course.
-    float course        = inbound_course(rwy);
+    float course = inbound_course(rwy);
     float intercept_ang = fabsf(angle_difference(course, a.heading_deg));
 
-    // Aircraft must be on the APPROACH side: coming from behind the threshold.
-    // along_track < 0 means aircraft is behind (upwind of) the runway -- correct.
-    // along_track > 0 means aircraft has passed the runway -- wrong side.
-    float along = along_track_km(a, rwy);
+    // Must be strictly within 30° of the correct approach heading
+    if (intercept_ang >= 30.0f)
+        return false;
 
-    return (intercept_ang <= 30.0f) && (along < 0.0f);
+    // Must be within 80km
+    float dist = distance_to_runway(a, rwy);
+    if (dist > 80.0f)
+        return false;
+
+    // Project (aircraft - runway) onto the inbound course unit vector.
+    // along > 0: aircraft is ahead of the runway in the inbound direction
+    //           = on the correct approach side (hasn't passed the threshold).
+    // along <= 0: aircraft is behind the threshold (wrong side) -> reject.
+    float course_rad = deg_to_rad(course);
+    float lx = cosf(course_rad);
+    float ly = sinf(course_rad);
+    float rx = rwy.x - a.x;
+    float ry = rwy.y - a.y;
+    float along = rx * lx + ry * ly;
+    if (along <= 0.0f)
+        return false;
+
+    return true;
 }
 
 float getInterceptAngle(const Aircraft& a, const Runway& rwy)
@@ -127,28 +148,24 @@ float getInterceptAngle(const Aircraft& a, const Runway& rwy)
 
 float calculateLocalizerDeviation(const Aircraft& a, const Runway& rwy)
 {
-    float cross_km_val = cross_track_km(a, rwy);
-    float dx           = rwy.x - a.x;
-    float dy           = rwy.y - a.y;
-    float dist_km      = sqrtf(dx*dx + dy*dy);
+    float cross = cross_track_signed(a, rwy);
+    float dist = distance_to_runway(a, rwy);
 
-    if (dist_km < 0.05f) return 0.0f;
+    if (dist < 0.1f) return 0.0f;
 
-    // Angular deviation: asin(lateral_offset / slant_distance)
-    float sin_val = std::clamp(cross_km_val / dist_km, -1.0f, 1.0f);
-    return std::clamp(rad_to_deg(asinf(sin_val)), -20.0f, 20.0f);
+    // Convert to degrees
+    float deviation = rad_to_deg(atan2f(cross, dist));
+    return std::clamp(deviation, -20.0f, 20.0f);
 }
 
 float calculateGlideslopeDeviation(const Aircraft& a, const Runway& rwy)
 {
-    float dx       = rwy.x - a.x;
-    float dy       = rwy.y - a.y;
-    float dist_km  = sqrtf(dx*dx + dy*dy);
-    float dist_nm  = dist_km * 0.539957f;
+    float dist_km = distance_to_runway(a, rwy);
+    float dist_nm = dist_km * 0.539957f;
 
-    // 3-degree glideslope: tan(3°)=0.05241, 1 NM=6076.12 ft
+    // 3-degree glideslope: tan(3°) * distance in ft
     float ideal_ft = dist_nm * 6076.12f * 0.05241f + 50.0f;
-    return a.altitude_ft - ideal_ft; // positive=too high, negative=too low
+    return a.altitude_ft - ideal_ft;
 }
 
 // ----------------------------------------------------------------
@@ -156,189 +173,133 @@ float calculateGlideslopeDeviation(const Aircraft& a, const Runway& rwy)
 // ----------------------------------------------------------------
 void updateILSApproach(Aircraft& a, const Runway& rwy, ILSInfo& ils_info, float dt)
 {
-    // ---- Geometry ------------------------------------------------
-    float dx       = rwy.x - a.x;
-    float dy       = rwy.y - a.y;
-    float dist_km  = sqrtf(dx*dx + dy*dy);
-    float along    = along_track_km(a, rwy);
-    float cross    = cross_track_km(a, rwy);
-    float course   = inbound_course(rwy);
+    float dist_km = distance_to_runway(a, rwy);
+    float course = inbound_course(rwy);
 
-    ils_info.distance_to_runway   = dist_km;
-    ils_info.localizer_deviation  = calculateLocalizerDeviation(a, rwy);
+    ils_info.distance_to_runway = dist_km;
+    ils_info.localizer_deviation = calculateLocalizerDeviation(a, rwy);
     ils_info.glideslope_deviation = calculateGlideslopeDeviation(a, rwy);
 
-    // ---- Out-of-airspace explosion --------------------------------
+    // ---- Out of airspace -----------------------------------------
     float dist_origin = sqrtf(a.x*a.x + a.y*a.y);
-    if (dist_origin > 80.0f)
+    if (dist_origin > 120.0f)
     {
-        a.is_crashed  = true;
+        a.is_crashed = true;
         a.crash_timer = 4.0f;
-        a.crash_x     = a.x;
-        a.crash_y     = a.y;
-        a.setImmediateResponse("MAYDAY MAYDAY! Outside controlled airspace!", 4.0f);
-        ils_info.ils_status = "LOST - OUTSIDE AIRSPACE";
+        a.crash_x = a.x;
+        a.crash_y = a.y;
+        a.setImmediateResponse("MAYDAY! Outside controlled airspace!", 4.0f);
+        ils_info.ils_status = "LOST";
         return;
     }
 
-    // ---- Overshot runway (passed it) ------------------------------
-    // along_track > 1.0 means aircraft is now in FRONT of the runway
-    // (beyond the threshold), having come from behind.
-    if (along > 1.0f)
+    // ---- Check if we're even on the correct side -----------------
+    float dir_to_rwy = bearing_toward(a.x, a.y, rwy.x, rwy.y);
+    float heading_diff = fabsf(angle_difference(course, a.heading_deg));
+
+    if (heading_diff > 90.0f && dist_km > 10.0f)
     {
-        a.is_crashed  = true;
-        a.crash_timer = 4.0f;
-        a.crash_x     = a.x;
-        a.crash_y     = a.y;
-        a.setImmediateResponse("MAYDAY! Runway overrun!", 4.0f);
-        ils_info.ils_status = "OVERSHOT";
+        a.target_heading_deg = course;
+        ils_info.ils_status = "TURNING TO APPROACH HEADING";
+        ils_info.is_intercepting = true;
         return;
     }
 
-    // ---- Successful landing ----------------------------------------
-    if (dist_km < 0.4f && a.altitude_ft < 300.0f)
-    {
-        a.setImmediateResponse("Runway in sight, landing. Good day!", 4.0f);
-        a.ils_active   = false;
-        a.ils_runway   = "";
-        a.is_crashed   = true;  // reuses removal — not counted as crash (has_landed=true)
-        a.crash_timer  = 2.5f;
-        a.crash_x      = a.x;
-        a.crash_y      = a.y;
-        ils_info.ils_status = "LANDED";
-        ils_info.has_landed = true;
-        return;
-    }
+    // ---- Localizer established check -----------------------------
+    bool aligned = (heading_diff <= 25.0f); // Was 15.0f
+    bool centered = (fabsf(ils_info.localizer_deviation) <= 4.0f);
 
-    // ---- Localizer established check ------------------------------
-    float hdg_error = fabsf(angle_difference(course, a.heading_deg));
-    bool  aligned   = (hdg_error <= 8.0f);
-    bool  centered  = (fabsf(ils_info.localizer_deviation) <= 1.5f);
-
-    if (aligned && centered)
+    if (aligned && centered && dist_km < 30.0f)
     {
         if (!ils_info.established_localizer)
         {
             ils_info.established_localizer = true;
-            ils_info.turn_count            = 0;
-            a.setImmediateResponse("Established localizer runway " + rwy.name + ".", 4.0f);
+            a.setImmediateResponse("Established localizer runway " + rwy.name, 4.0f);
         }
     }
-    else if (ils_info.established_localizer && fabsf(ils_info.localizer_deviation) > 3.0f)
+    else if (ils_info.established_localizer && fabsf(ils_info.localizer_deviation) > 8.0f)
     {
-        ils_info.established_localizer  = false;
+        ils_info.established_localizer = false;
         ils_info.established_glideslope = false;
-        a.setImmediateResponse("Localizer lost, going around!", 3.0f);
     }
 
-    // ---- Glideslope established check -----------------------------
-    if (ils_info.established_localizer && fabsf(ils_info.glideslope_deviation) <= 150.0f)
+    // ---- Glideslope established ----------------------------------
+    if (ils_info.established_localizer && fabsf(ils_info.glideslope_deviation) <= 1000.0f && dist_km < 25.0f) // Increased from 300ft and 15km
     {
-        if (!ils_info.established_glideslope)
-        {
+        if (!ils_info.established_glideslope) {
             ils_info.established_glideslope = true;
-            a.setImmediateResponse(
-                "Established ILS runway " + rwy.name + ". Gear down, cleared to land.", 5.0f);
+            a.setImmediateResponse("Glideslope captured, following beam.", 4.0f);
         }
     }
-    else if (ils_info.established_glideslope && fabsf(ils_info.glideslope_deviation) > 500.0f)
-    {
-        ils_info.established_glideslope = false;
-    }
 
-    // ---- Heading guidance -----------------------------------------
-    //
-    // Three possible states:
-    //
-    // 1) FAR from centerline (|cross| > 2 km):
-    //    Aim at a point on the extended centerline. One heading change.
-    //
-    // 2) CLOSE to centerline (|cross| <= 2 km), not yet established:
-    //    Fly a 20-degree intercept cut. One heading change.
-    //    cross > 0 means LEFT of course -> cut right (subtract from heading)
-    //    cross < 0 means RIGHT of course -> cut left (add to heading)
-    //
-    // 3) ESTABLISHED:
-    //    Proportional correction. No discrete turns.
-    //
-    // At most 3 heading targets total: far-aim -> cut -> roll-out.
-
+    // ---- Heading guidance ----------------------------------------
     float desired_heading;
 
-    if (!ils_info.established_localizer)
-    {
-        ils_info.is_intercepting = true;
 
-        if (fabsf(cross) > 2.0f)
-        {
-            // State 1: aim at a point on the extended centerline behind the runway.
-            // "Behind the runway" in inbound direction = subtract from runway position.
-            float inbound_rad = deg_to_rad(course);
-            float aim_dist    = std::min(dist_km * 0.65f, 10.0f);
-            float aim_x       = rwy.x - cosf(inbound_rad) * aim_dist;
-            float aim_y       = rwy.y - sinf(inbound_rad) * aim_dist;
-            desired_heading   = bearing_toward(a.x, a.y, aim_x, aim_y);
-            ils_info.ils_status = "INTERCEPTING - HEADING TO CENTERLINE";
-        }
-        else
-        {
-            // State 2: shallow 20-degree cut onto centerline.
-            // cross > 0 = LEFT of course = must turn RIGHT = decrease heading (math CCW)
-            float cut_dir   = (cross > 0.0f) ? -1.0f : 1.0f;
-            desired_heading = wrap360(course + cut_dir * 20.0f);
-            ils_info.ils_status = "INTERCEPTING - CUTTING ONTO LOCALIZER";
-        }
+    if (!ils_info.established_localizer) {
+        // 2. Increase intercept aggression (Double the deviation multiplier)
+        desired_heading = wrap360(course - ils_info.localizer_deviation * 4.0f); // Was 2.0f
+        ils_info.ils_status = "INTERCEPTING - TARGET " + std::to_string((int)desired_heading) + "°";
+    } else {
+        // 3. Increase tracking tightness
+        float correction = std::clamp(-ils_info.localizer_deviation * 5.0f, -15.0f, 15.0f); // Was 2.0f gain
+        desired_heading = wrap360(course + correction);
 
-        // Count as a new "turn" only if heading target changed meaningfully
-        float change = fabsf(angle_difference(desired_heading, ils_info.last_intercept_heading));
-        if (change > 8.0f)
-        {
-            ils_info.turn_count++;
-            ils_info.last_intercept_heading = desired_heading;
-        }
-
-        ils_info.intercept_heading = desired_heading;
-    }
-    else
-    {
-        // State 3: established — proportional correction to stay centered.
-        // cross > 0 = LEFT of course -> correct right -> subtract from heading
-        // Gain: 4 deg per km, capped at ±15 deg
-        float correction  = std::clamp(-cross * 4.0f, -15.0f, 15.0f);
-        desired_heading   = wrap360(course + correction);
-        ils_info.is_intercepting = false;
 
         if (ils_info.established_glideslope)
             ils_info.ils_status = "ON ILS - TRACKING";
         else
-            ils_info.ils_status = "ON LOCALIZER - CAPTURING GLIDESLOPE";
+            ils_info.ils_status = "ON LOCALIZER - DESCENDING";
     }
 
-    // Write directly to target — bypasses command_delay so ILS
-    // has immediate authority over the aircraft every frame.
-    a.target_heading_deg  = desired_heading;
-    a.pending_heading_deg = desired_heading;
+    // Limit turn rate to realistic degrees per second
+    float current_hdg = a.target_heading_deg;
+    float hdg_change = angle_difference(desired_heading, current_hdg);
+    float max_turn = 25.0f * dt; // FIXED: removed '* 60.0f' which was causing 600deg/sec snaps
 
-    // ---- Altitude guidance ----------------------------------------
-    if (ils_info.established_localizer)
+    if (fabsf(hdg_change) > max_turn)
     {
-        // Follow 3-degree glideslope precisely
-        float dist_nm  = dist_km * 0.539957f;
+        if (hdg_change > 0)
+            desired_heading = wrap360(current_hdg + max_turn);
+        else
+            desired_heading = wrap360(current_hdg - max_turn);
+    }
+
+    // Apply the calculated heading to the aircraft's target
+    a.target_heading_deg = desired_heading;
+
+    // ---- Altitude guidance (Glideslope) ----
+    if (ils_info.established_glideslope)
+    {
+        float dist_nm = dist_km * 0.539957f;
+        // 3-degree slope calculation
         float ideal_ft = dist_nm * 6076.12f * 0.05241f + 50.0f;
-        float tgt_alt  = std::max(ideal_ft, 50.0f);
-
-        a.target_altitude_ft  = tgt_alt;
-        a.pending_altitude_ft = tgt_alt;
+        a.target_altitude_ft = std::max(ideal_ft, 0.0f);
     }
-    else if (dist_km < 25.0f)
-    {
-        // Not yet established but getting close: gentle descent toward capture altitude
-        float dist_nm     = dist_km * 0.539957f;
-        float capture_alt = dist_nm * 150.0f + 1200.0f;
-        capture_alt       = std::clamp(capture_alt, 1200.0f, a.altitude_ft);
 
-        a.target_altitude_ft  = capture_alt;
-        a.pending_altitude_ft = capture_alt;
+    if (dist_km < 1.2f && a.altitude_ft < 100.0f) // Slightly tighter thresholds for "touchdown"
+    {
+        if (!a.is_on_ground) {
+            a.setImmediateResponse("Touchdown! Welcome to the airport.", 3.0f);
+
+            // Stop the plane and set landing state
+            a.is_on_ground = true;
+            a.landing_timer = 2.0f; // Stay on runway for 2 seconds
+
+            // Disable flight systems
+            a.ils_active = false;
+            a.speed_kts = 0;
+            a.target_speed_kts = 0;
+            a.altitude_ft = 0;
+            a.target_altitude_ft = 0;
+
+            // Increment the landing counter
+            planes_landed_count++;
+
+            ils_info.ils_status = "LANDED";
+            ils_info.has_landed = true;
+        }
+        return;
     }
 }
 
@@ -350,26 +311,23 @@ std::string getILSStatusMessage(const ILSInfo& info)
     std::ostringstream ss;
     ss << "[ILS] " << info.ils_status;
 
-    ss << "  |  LOC: ";
+    ss << "  LOC: ";
     if (fabsf(info.localizer_deviation) < 0.5f)
         ss << "CENTERED";
     else if (info.localizer_deviation > 0.0f)
-        ss << std::fixed << std::setprecision(1) << "L " << info.localizer_deviation << "deg";
+        ss << "L " << std::fixed << std::setprecision(1) << info.localizer_deviation << "°";
     else
-        ss << std::fixed << std::setprecision(1) << "R " << -info.localizer_deviation << "deg";
+        ss << "R " << std::fixed << std::setprecision(1) << -info.localizer_deviation << "°";
 
-    ss << "  |  G/S: ";
+    ss << "  G/S: ";
     if (fabsf(info.glideslope_deviation) < 100.0f)
         ss << "ON PATH";
     else if (info.glideslope_deviation > 0.0f)
-        ss << std::fixed << std::setprecision(0) << "HIGH +" << info.glideslope_deviation << "ft";
+        ss << "HIGH +" << (int)info.glideslope_deviation << "ft";
     else
-        ss << std::fixed << std::setprecision(0) << "LOW " << info.glideslope_deviation << "ft";
+        ss << "LOW " << (int)info.glideslope_deviation << "ft";
 
-    ss << "  |  DME: " << std::fixed << std::setprecision(1) << info.distance_to_runway << "km";
-
-    if (info.is_intercepting)
-        ss << "  |  Turn " << info.turn_count << "/3";
+    ss << "  DME: " << std::fixed << std::setprecision(1) << info.distance_to_runway << "km";
 
     return ss.str();
 }

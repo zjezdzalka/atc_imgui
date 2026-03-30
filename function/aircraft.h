@@ -25,6 +25,8 @@ struct Aircraft
     std::string squawk_code = "1200";
     bool selected = false; // user can edit
     bool is_overflight = false; // if true, user cannot manage plane
+    bool is_on_ground = false;
+    float landing_timer = 0.0f;
 
     // ILS approach
     bool ils_active = false;

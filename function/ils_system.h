@@ -27,6 +27,8 @@ struct ILSInfo
     std::string ils_status          = "NOT ON ILS";
 };
 
+extern int planes_landed_count;
+
 // Returns true if aircraft can intercept localizer (angle <= 30 deg, on approach side)
 bool  canInterceptLocalizer(const Aircraft& a, const Runway& rwy);
 
@@ -44,5 +46,7 @@ void  updateILSApproach(Aircraft& a, const Runway& rwy, ILSInfo& ils_info, float
 
 // Formatted status string for the HUD
 std::string getILSStatusMessage(const ILSInfo& info);
+
+float inbound_course(const Runway& rwy);  // Add this line
 
 #endif // ILS_SYSTEM_H

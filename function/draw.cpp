@@ -3,6 +3,9 @@
 //
 
 #include "draw.h"
+
+#include <algorithm>
+
 #include "runway.h"
 #include "aircraft.h"
 #include "utils.h"
@@ -229,6 +232,8 @@ void DrawAircraft(ImDrawList* draw_list,
         float s = (selected_index == (int)i) ? 1.1f : 0.95f;
 
         if (zoom_level>1) s *= (1/zoom_level);
+
+        s *= 0.5;
 
         // Ensure size stays within reasonable bounds using std::clamp
         s = std::clamp(s, 0.5f, 2.5f);
