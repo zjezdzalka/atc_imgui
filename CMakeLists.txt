@@ -31,13 +31,20 @@ target_include_directories(imgui PUBLIC
 add_executable(imgui_radar
         main.cpp
         function/aircraft.cpp
-        function/emergency.cpp
-        function/utils.cpp
-        function/runway.cpp
-        function/waypoint.cpp
+        function/aircraft.h
         function/draw.cpp
+        function/draw.h
+        function/emergency.cpp
+        function/emergency.h
+        function/emergency_types.h
         function/ils_system.h
         function/ils_system.cpp
+        function/runway.cpp
+        function/runway.h
+        function/utils.cpp
+        function/utils.h
+        function/waypoint.cpp
+        function/waypoint.h
 )
 
 target_link_libraries(imgui_radar imgui glfw)
