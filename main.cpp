@@ -75,8 +75,6 @@ map<string, vector<string>> importAirportAirlines(short mode) {
 
     map<string, vector<string>> data;
 
-    // vector<string> = {ALT_MAX, ALT_MIN, SPD_MAX, SPD_MIN}
-
     if (mode == 1) {
         data["EPPO"] = {
             "LOT", "DLH", "WZZ", "ENT", "SAS", "RYR"
@@ -94,7 +92,7 @@ map<string, vector<string>> importAirportAirlines(short mode) {
 
 pair<float, float> generateWind() {
     float wind_heading = (rand() % 360); // 0 - 360deg
-    float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
+    float wind_speed_kts = 2.0f + (rand() % 28); // 2-30 kts
 
     return make_pair(wind_heading, wind_speed_kts);
 }
@@ -121,7 +119,7 @@ int main(int, char**)
 
     // glfw init
 
-    GLFWwindow* window = glfwCreateWindow(1280, 768, "Air Traffic Controller", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 768, "ATC Simulator", nullptr, nullptr);
     if (window == nullptr) return 1;
 
     glfwMakeContextCurrent(window);

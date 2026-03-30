@@ -69,7 +69,7 @@ void GenerateRandomEmergency(std::vector<Aircraft>& aircraft, float dt, float& t
     timer = 0.0f;
 
     // 5% chance to generate a random emergency
-    if (rand() % 100 >= 50 || aircraft.empty()) return;
+    if (rand() % 100 >= 2 || aircraft.empty()) return;
 
     // Find aircraft without current emergency, not overflight, and not crashed
     std::vector<int> candidates;
@@ -108,7 +108,7 @@ void GenerateRandomEmergency(std::vector<Aircraft>& aircraft, float dt, float& t
             random_ac.squawk_code = "7700";
             break;
         case EMERGENCY_ENGINE_FAILURE:
-            random_ac.emergency_timer = 300.0f + dist_to_airport * 8.0f;
+            random_ac.emergency_timer = 300.0f + dist_to_airport * 12.0f;
             random_ac.emergency_message = "Engine failure - declaring emergency";
             random_ac.squawk_code = "7700";
             break;
