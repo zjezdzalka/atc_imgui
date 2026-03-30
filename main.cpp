@@ -34,7 +34,7 @@ map<string, vector<float>> importAircraftData(short mode) {
     // vector<string> = {ALT_MAX, ALT_MIN, SPD_MAX, SPD_MIN}
 
     if (mode == 1) {
-        data["a320n"] = { 23000.0f, 1600.0f, 80.0f, 300.0f };
+        data["a320n"] = { 13000.0f, 1600.0f, 80.0f, 300.0f };
     }
     else if (mode == 0) {
         // read file
@@ -79,7 +79,7 @@ map<string, vector<string>> importAirportAirlines(short mode) {
 
     if (mode == 1) {
         data["EPPO"] = {
-            "LOT", "DLH", "WZZ"
+            "LOT", "DLH", "WZZ", "ENT", "SAS", "RYR"
         };
     }
     else if (mode == 0) {
@@ -141,9 +141,13 @@ int main(int, char**)
     vector<Runway> runways = createRunways();
     vector<Waypoint> waypoints = createWaypoints();
 
+    const map<string, string> codes = initCallsigns(1);
+    map<string, vector<string>> airport_airlines = importAirportAirlines(1);
+    vector<string> cur_codes = airport_airlines["EPPO"];
+
     // Aircraft generation
     constexpr int initial_count = 12;
-    vector<Aircraft> aircraft = generateInitialAircraft(initial_count, radar_range_km);
+    vector<Aircraft> aircraft = generateInitialAircraft(initial_count, radar_range_km, cur_codes);
     int selected_index = -1;
 
     // Store ILS info for each aircraft
@@ -171,7 +175,6 @@ int main(int, char**)
     // wind[0] - heading
     // wind[1] - speed
 
-
     // Camera data
     float camera_x = 0.0f;
     float camera_y = 0.0f;
@@ -192,8 +195,7 @@ int main(int, char**)
     float next_spawn_interval = spawn_interval_min + ((float)rand() / RAND_MAX) * (spawn_interval_max - spawn_interval_min);
     const int max_aircraft = 15;
 
-    /*int total_landed = 0;
-    int total_departed = 0;*/
+    /*int total_departed = 0;*/
     int total_crash_count = 0;
 
     // Check if window not closed or game isn't finished.
@@ -226,7 +228,7 @@ int main(int, char**)
             next_spawn_interval = spawn_interval_min + ((float)rand() / RAND_MAX) * (spawn_interval_max - spawn_interval_min);
 
             Aircraft new_ac;
-            generateAircraft(aircraft, new_ac, radar_range_km, (int)aircraft.size());
+            generateAircraft(aircraft, new_ac, radar_range_km, (int)aircraft.size(), cur_codes);
 
             // Spawn on the edge of radar range
             float edge_angle = ((float)rand() / RAND_MAX) * 2.0f * IM_PI;
@@ -790,7 +792,7 @@ int main(int, char**)
         if (ImGui::Button("Spawn Random Aircraft", ImVec2(-1, 0)))
         {
             Aircraft a;
-            generateAircraft(aircraft, a, radar_range_km, aircraft.size());
+            generateAircraft(aircraft, a, radar_range_km, aircraft.size(), cur_codes);
             aircraft.push_back(a);
         }
 
@@ -806,7 +808,7 @@ int main(int, char**)
         ImGui::SliderFloat("##speed", &animation_speed, 0.1f, 5.0f, "%.1fx");
 
         ImGui::Dummy(ImVec2(0, 5));
-        ImGui::Text("Wind: %03.0fÂ° at %.0f kts", wind.first, wind.second);
+        ImGui::Text("Wind: %03.0f° at %.0f kts", wind.first, wind.second);
 
         ImGui::Dummy(ImVec2(0, 10));
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "CAMERA CONTROLS");
@@ -893,13 +895,13 @@ int main(int, char**)
                         ImGui::Text("Localizer: ");
                         ImGui::SameLine();
                         if (fabs(deviation) < 0.5f) {
-                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "â—Ź CENTERED");
+                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "—Ź CENTERED");
                         }
                         else if (deviation < 0) {
-                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "â—€ LEFT %.1fÂ°", -deviation);
+                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "—€ LEFT %.1f°", -deviation);
                         }
                         else {
-                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "RIGHT %.1fÂ° â–¶", deviation);
+                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "RIGHT %.1f° –¶", deviation);
                         }
                     }
 
@@ -908,19 +910,14 @@ int main(int, char**)
                         ImGui::Text("Glideslope: ");
                         ImGui::SameLine();
                         if (fabs(gs_dev) < 100) {
-                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "â—Ź ON PATH");
+                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "—Ź ON PATH");
                         }
                         else if (gs_dev > 0) {
-                            ImGui::TextColored(ImVec4(1, 0.5f, 0, 1), "â†‘ HIGH %.0f ft", gs_dev);
+                            ImGui::TextColored(ImVec4(1, 0.5f, 0, 1), "†‘ HIGH %.0f ft", gs_dev);
                         }
                         else {
-                            ImGui::TextColored(ImVec4(1, 0, 0, 1), "â†“ LOW %.0f ft", -gs_dev);
+                            ImGui::TextColored(ImVec4(1, 0, 0, 1), "†“ LOW %.0f ft", -gs_dev);
                         }
-                    }
-
-                    // Show turn count during interception
-                    if (info.is_intercepting && !info.established_localizer) {
-                        ImGui::Text("Interception turns: %d/5", info.turn_count);
                     }
                 }
 
@@ -990,7 +987,7 @@ int main(int, char**)
                             float current_hdg = sel.heading_deg;
                             float diff = fabsf(angle_difference(inbound, current_hdg));
                             sel.setImmediateResponse("Unable to clear ILS - intercept angle too steep (" +
-                                std::to_string((int)diff) + "Â°, max 30Â°)", 4.0f);
+                                std::to_string((int)diff) + "°, max 30°)", 4.0f);
                         }
                         ImGui::PopStyleColor(2);
                     }
@@ -1143,17 +1140,17 @@ int main(int, char**)
                 }
             }
 
-            ImGui::Text("Heading: %.0fÂ°", fmodf(450.0f - sel.heading_deg, 360.0f));
+            ImGui::Text("Heading: %.0f°", fmodf(450.0f - sel.heading_deg, 360.0f));
 
             if (fabs(angle_difference(sel.target_heading_deg, sel.heading_deg)) > 0.5f)
             {
                 ImGui::SameLine();
                 ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f),
-                    "-> %.0fÂ°", fmodf(450.0f - sel.target_heading_deg, 360.0f));
+                    "-> %.0f°", fmodf(450.0f - sel.target_heading_deg, 360.0f));
             }
 
             // Heading buttons
-            if (ImGui::Button("-5Â°##hdg1", ImVec2(210, 0)))
+            if (ImGui::Button("-5°##hdg1", ImVec2(210, 0)))
             {
                 float old_target = sel.target_heading_deg;
                 sel.pending_heading_deg = fmodf(sel.target_heading_deg + 5.0f, 360.0f);
@@ -1166,7 +1163,7 @@ int main(int, char**)
                 sel.setCommand(r.str(), 3.5f); // stays for 3.5s
             }
             ImGui::SameLine();
-            if (ImGui::Button("+5Â°##hdg2", ImVec2(210, 0)))
+            if (ImGui::Button("+5°##hdg2", ImVec2(210, 0)))
             {
                 float old_target = sel.target_heading_deg;
                 sel.pending_heading_deg = fmodf(sel.target_heading_deg - 5.0f + 360.0f, 360.0f);

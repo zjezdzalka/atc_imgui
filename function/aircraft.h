@@ -72,6 +72,6 @@ struct Aircraft
     void setImmediateResponse(const std::string& response, float duration = 3.0f);
 };
 
-void generateAircraft(std::vector<Aircraft>& aircraft, Aircraft& a, float radar_range_km, int index);
+void generateAircraft(std::vector<Aircraft>& aircraft, Aircraft& a, float radar_range_km, int index, std::vector<std::string> cur_codes);
 
-std::vector<Aircraft> generateInitialAircraft(int count, float radar_range_km);
+std::vector<Aircraft> generateInitialAircraft(int count, float radar_range_km, std::vector<std::string> cur_codes);
