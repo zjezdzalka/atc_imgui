@@ -122,7 +122,7 @@ bool canInterceptLocalizer(const Aircraft& a, const Runway& rwy)
 
     // Must be within 80km
     float dist = distance_to_runway(a, rwy);
-    if (dist > 80.0f)
+    if (dist > 40.0f)
         return false;
 
     // Project (aircraft - runway) onto the inbound course unit vector.
@@ -137,6 +137,34 @@ bool canInterceptLocalizer(const Aircraft& a, const Runway& rwy)
     float along = rx * lx + ry * ly;
     if (along <= 0.0f)
         return false;
+
+    float heading_deg = rwy.heading_deg;
+    std::fmod(heading_deg, 180.0f);
+
+    /*
+     mega lagorytm generalnie
+     wyliczamy wzór ogólny runway i ILS
+     Ax+By+C = 0
+     A = tg(nachylenie%180)
+
+     następnie wyliczyć takie B i C żeby przechodziło przez rwy.x i rwy.y
+    czyli wsumie przyjąć B jako -1, a następnie obliczyć różnicę |y - Ax| jako wartość C
+
+     wyliczamy linię prostopadłą do ILS
+     Dx+Ey+F = 0;
+     D = -ctg(nachylenie%180)
+    I dobrać takie E i F żeby przechodziło przez pozycję Aircraft
+    czyli wsumie przyjąć E jako -1, a następnie obliczyć różnicę |y - Dx| jako wartość F
+
+    Następnie trójkąt 30,60,90. Dystans przecięcia linii prostopadłej z ILS od genezy runway.
+    i to jest a pierwiastków z 3.
+    Zatem maksymalny dystans jaki samolot może być od ILS to a (zatem trzeba wyliczyć odległość * pierwiastek z 3 przez 3)
+    No i sprawdzić dystans samolotu od ILS i zobaczyć czy przykracza maksymalną, jeśli tak return false, else true.
+    czyli wzór d = |Ax0 + By0 + C|/sqrt(A^2+B^2), gdzie x0 to a.x, a y0 to b.y
+     */
+
+    float tg_rwy = tan(heading_deg);
+    float ctg_h = 1;
 
     return true;
 }
