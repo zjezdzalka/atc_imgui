@@ -617,7 +617,7 @@ int main(int, char**)
         }
 
         ImU32 col_green = IM_COL32(0, 255, 0, 100);
-        ImU32 bg = IM_COL32(0, 20, 0, 200);
+        ImU32 bg = IM_COL32(0, 15, 0, 200);
         draw_list->AddRectFilled(win_pos, ImVec2(win_pos.x + win_size.x, win_pos.y + win_size.y), bg, 8.0f);
 
         auto world_to_screen = [&](float wx, float wy)
