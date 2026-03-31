@@ -223,6 +223,12 @@ float calculateGlideslopeDeviation(const Aircraft& a, const Runway& rwy)
 // ----------------------------------------------------------------
 // Main ILS update
 // ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// Main ILS update
+// ----------------------------------------------------------------
+// ----------------------------------------------------------------
+// Main ILS update
+// ----------------------------------------------------------------
 void updateILSApproach(Aircraft& a, const Runway& rwy, ILSInfo& ils_info, float dt)
 {
     float dist_km = distance_to_runway(a, rwy);
@@ -258,7 +264,7 @@ void updateILSApproach(Aircraft& a, const Runway& rwy, ILSInfo& ils_info, float 
     }
 
     // ---- Localizer established check -----------------------------
-    bool aligned = (heading_diff <= 25.0f); // Was 15.0f
+    bool aligned = (heading_diff <= 25.0f);
     bool centered = (fabsf(ils_info.localizer_deviation) <= 4.0f);
 
     if (aligned && centered && dist_km < 30.0f)
@@ -275,8 +281,8 @@ void updateILSApproach(Aircraft& a, const Runway& rwy, ILSInfo& ils_info, float 
         ils_info.established_glideslope = false;
     }
 
-    // ---- Glideslope established ----------------------------------
-    if (ils_info.established_localizer && fabsf(ils_info.glideslope_deviation) <= 1000.0f && dist_km < 25.0f) // Increased from 300ft and 15km
+    // ---- Glideslope established check ----------------------------
+    if (ils_info.established_localizer && fabsf(ils_info.glideslope_deviation) <= 1000.0f && dist_km < 25.0f)
     {
         if (!ils_info.established_glideslope) {
             ils_info.established_glideslope = true;
@@ -287,16 +293,12 @@ void updateILSApproach(Aircraft& a, const Runway& rwy, ILSInfo& ils_info, float 
     // ---- Heading guidance ----------------------------------------
     float desired_heading;
 
-
     if (!ils_info.established_localizer) {
-        // 2. Increase intercept aggression (Double the deviation multiplier)
-        desired_heading = wrap360(course - ils_info.localizer_deviation * 4.0f); // Was 2.0f
+        desired_heading = wrap360(course - ils_info.localizer_deviation * 4.0f);
         ils_info.ils_status = "INTERCEPTING - TARGET " + std::to_string((int)desired_heading) + "°";
     } else {
-        // 3. Increase tracking tightness
-        float correction = std::clamp(-ils_info.localizer_deviation * 5.0f, -15.0f, 15.0f); // Was 2.0f gain
+        float correction = std::clamp(-ils_info.localizer_deviation * 5.0f, -15.0f, 15.0f);
         desired_heading = wrap360(course + correction);
-
 
         if (ils_info.established_glideslope)
             ils_info.ils_status = "ON ILS - TRACKING";
@@ -307,7 +309,7 @@ void updateILSApproach(Aircraft& a, const Runway& rwy, ILSInfo& ils_info, float 
     // Limit turn rate to realistic degrees per second
     float current_hdg = a.target_heading_deg;
     float hdg_change = angle_difference(desired_heading, current_hdg);
-    float max_turn = 25.0f * dt; // FIXED: removed '* 60.0f' which was causing 600deg/sec snaps
+    float max_turn = 25.0f * dt;
 
     if (fabsf(hdg_change) > max_turn)
     {
@@ -317,26 +319,40 @@ void updateILSApproach(Aircraft& a, const Runway& rwy, ILSInfo& ils_info, float 
             desired_heading = wrap360(current_hdg - max_turn);
     }
 
-    // Apply the calculated heading to the aircraft's target
     a.target_heading_deg = desired_heading;
 
-    // ---- Altitude guidance (Glideslope) ----
-    if (ils_info.established_glideslope)
-    {
-        float dist_nm = dist_km * 0.539957f;
-        // 3-degree slope calculation
-        float ideal_ft = dist_nm * 6076.12f * 0.05241f + 50.0f;
+    // ---- Speed guidance (Auto-throttle for approach) -------------
+    if (dist_km > 25.0f) {
+        if (a.target_speed_kts > 220.0f) a.target_speed_kts = 220.0f;
+    } else if (dist_km > 15.0f) {
+        if (a.target_speed_kts > 180.0f) a.target_speed_kts = 180.0f;
+    } else if (dist_km > 8.0f) {
+        if (a.target_speed_kts > 160.0f) a.target_speed_kts = 160.0f;
+    } else {
+        if (a.target_speed_kts > 135.0f) a.target_speed_kts = 135.0f; // Final approach speed
+    }
+
+    // ---- Altitude guidance (Glideslope) --------------------------
+    float dist_nm = dist_km * 0.539957f;
+    float ideal_ft = dist_nm * 6076.12f * 0.05241f + 50.0f;
+
+    // The plane immediately uses the glideslope calculation as its target.
+    // We only apply it if the glideslope is LOWER than the plane's current
+    // target altitude, so it catches the slope from below or rides it down,
+    // rather than climbing if it's already low.
+    if (ideal_ft < a.target_altitude_ft) {
         a.target_altitude_ft = std::max(ideal_ft, 0.0f);
     }
 
-    if (dist_km < 1.2f && a.altitude_ft < 100.0f) // Slightly tighter thresholds for "touchdown"
+    // ---- Touchdown Logic -----------------------------------------
+    if (dist_km < 1.2f && a.altitude_ft < 100.0f)
     {
         if (!a.is_on_ground) {
             a.setImmediateResponse("Touchdown! Welcome to the airport.", 3.0f);
 
             // Stop the plane and set landing state
             a.is_on_ground = true;
-            a.landing_timer = 2.0f; // Stay on runway for 2 seconds
+            a.landing_timer = 3.0f; // Stay on runway for 3 seconds
 
             // Disable flight systems
             a.ils_active = false;

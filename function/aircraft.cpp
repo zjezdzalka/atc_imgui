@@ -82,13 +82,13 @@ void generateAircraft(std::vector<Aircraft>& aircraft,
     if (rand() % 100 < 10)
     {
         a.is_overflight = true;
-        a.altitude_ft = 32000.0f + (rand() % 111) * 100;
+        a.altitude_ft = 31000.0f + (rand() % 121) * 100;
         a.squawk_code = "----";
     }
     else
     {
         a.is_overflight = false;
-        a.altitude_ft = 1600.0f + (rand() % 215) * 100;
+        a.altitude_ft = 6000.0f + (rand() % 70) * 100;
         a.squawk_code = generateSquawkCode();
 
         if (rand() % 100 < 2)

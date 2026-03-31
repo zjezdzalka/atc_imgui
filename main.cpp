@@ -154,7 +154,7 @@ int main(int, char**)
     // Basic information
     map<string, vector<float>> aircraft_data = importAircraftData(1);
 
-    float ALT_MAX = 23000.0f;
+    float ALT_MAX = 13000.0f;
     float ALT_MIN = 1600.0f;
     float SPD_MIN = 80.0f;
     float SPD_MAX = 300.0f;
