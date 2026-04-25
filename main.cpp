@@ -9,6 +9,7 @@
 #include "function/runway.h"
 #include "function/waypoint.h"
 #include "function/draw.h"
+#include "function/ils_system.h"
 
 #include <GLFW/glfw3.h>
 #include <cstdio>
@@ -20,9 +21,81 @@
 #include <vector>
 #include <string>
 #include <iomanip>
-#include <cfloat>
+#include <map>
 
 using namespace std;
+
+map<string, vector<float>> importAircraftData(short mode) {
+    // mode: 0 - from file
+    // mode: 1 - static
+
+    map<string, vector<float>> data;
+
+    // vector<string> = {ALT_MAX, ALT_MIN, SPD_MAX, SPD_MIN}
+
+    if (mode == 1) {
+        data["a320n"] = { 13000.0f, 1600.0f, 80.0f, 300.0f };
+    }
+    else if (mode == 0) {
+        // read file
+    }
+    else {
+        data = {};
+    }
+
+    return data;
+}
+
+map<string, string> initCallsigns(short mode) {
+    // mode: 0 - from file
+    // mode: 1 - static
+
+    map<string, string> data;
+
+    // vector<string> = {ALT_MAX, ALT_MIN, SPD_MAX, SPD_MIN}
+
+    if (mode == 1) {
+        data["LOT"] = "POLLOT";
+        data["DLH"] = "LUFTHANSA";
+        data["WZZ"] = "WIZZAIR";
+    }
+    else if (mode == 0) {
+        // read file
+    }
+    else {
+        data = {};
+    }
+
+    return data;
+}
+
+map<string, vector<string>> importAirportAirlines(short mode) {
+    // mode: 0 - from file
+    // mode: 1 - static
+
+    map<string, vector<string>> data;
+
+    if (mode == 1) {
+        data["EPPO"] = {
+            "LOT", "DLH", "WZZ", "ENT", "SAS", "RYR"
+        };
+    }
+    else if (mode == 0) {
+        // read file
+    }
+    else {
+        data = {};
+    }
+
+    return data;
+}
+
+pair<float, float> generateWind() {
+    float wind_heading = (rand() % 360); // 0 - 360deg
+    float wind_speed_kts = 2.0f + (rand() % 28); // 2-30 kts
+
+    return make_pair(wind_heading, wind_speed_kts);
+}
 
 int main(int, char**)
 {
@@ -32,21 +105,21 @@ int main(int, char**)
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit()) return 1;
 
-    #if __APPLE__
-        const char* glsl_version = "#version 150";
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-        glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-    #else
-        const char* glsl_version = "#version 130";
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-    #endif
+#if __APPLE__
+    const char* glsl_version = "#version 150";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+#else
+    const char* glsl_version = "#version 130";
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+#endif
 
     // glfw init
 
-    GLFWwindow* window = glfwCreateWindow(1280, 768, "Air Traffic Controller", nullptr, nullptr);
+    GLFWwindow* window = glfwCreateWindow(1280, 768, "ATC Simulator", nullptr, nullptr);
     if (window == nullptr) return 1;
 
     glfwMakeContextCurrent(window);
@@ -63,62 +136,132 @@ int main(int, char**)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     // Data init
-    std::vector<Runway> runways = createRunways();
-    std::vector<Waypoint> waypoints = createWaypoints();
+    vector<Runway> runways = createRunways();
+    vector<Waypoint> waypoints = createWaypoints();
+
+    const map<string, string> codes = initCallsigns(1);
+    map<string, vector<string>> airport_airlines = importAirportAirlines(1);
+    vector<string> cur_codes = airport_airlines["EPPO"];
 
     // Aircraft generation
-    const int initial_count = 12;
-    std::vector<Aircraft> aircraft = generateInitialAircraft(initial_count, radar_range_km);
+    constexpr int initial_count = 12;
+    vector<Aircraft> aircraft = generateInitialAircraft(initial_count, radar_range_km, cur_codes);
     int selected_index = -1;
 
+    // Store ILS info for each aircraft
+    map<int, ILSInfo> aircraft_ils_info;
+
     // Basic information
-    const float ALT_MAX = 23000.0f;
-    const float ALT_MIN = 1600.0f;
-    const float SPD_MIN = 80.0f;
-    const float SPD_MAX = 300.0f;
-    float wind_heading = (float)(rand() % 360); // 0 - 360deg
-    float wind_speed_kts = 5.0f + (rand() % 25); // 5-30 kts
+    map<string, vector<float>> aircraft_data = importAircraftData(1);
+
+    float ALT_MAX = 13000.0f;
+    float ALT_MIN = 1600.0f;
+    float SPD_MIN = 80.0f;
+    float SPD_MAX = 300.0f;
+
+    if (aircraft_data.size() == 1) {
+        ALT_MAX = aircraft_data["a320n"][0];
+        ALT_MIN = aircraft_data["a320n"][1];
+        SPD_MIN = aircraft_data["a320n"][2];
+        SPD_MAX = aircraft_data["a320n"][3];
+    }
+    else {
+        // we gotta make some shi up
+    }
+
+    pair<float, float> wind = generateWind();
+    // wind[0] - heading
+    // wind[1] - speed
 
     // Camera data
     float camera_x = 0.0f;
     float camera_y = 0.0f;
     float zoom_level = 1.0f;
     bool is_panning = false;
-    ImVec2 last_mouse_pos;
+    ImVec2 last_mouse_pos; // x,y
     double last_time = glfwGetTime();
     float animation_speed = 1.0f; // Time multiplier
-
-    const float right_panel_width = 450.0f;
 
     // Random emergency generation
     float random_emergency_timer = 0.0f;
     const float random_emergency_interval = 60.0f; // Emergency chance every 60 seconds
+
+    // Aircraft spawn
+    float spawn_timer = 0.0f;
+    const float spawn_interval_min = 60.0f;  // minimum seconds between spawns
+    const float spawn_interval_max = 100.0f;  // maximum seconds between spawns
+    float next_spawn_interval = spawn_interval_min + ((float)rand() / RAND_MAX) * (spawn_interval_max - spawn_interval_min);
+    const int max_aircraft = 15;
+
+    /*int total_departed = 0;*/
     int total_crash_count = 0;
 
     // Check if window not closed or game isn't finished.
     while (!glfwWindowShouldClose(window))
     {
-        double now = glfwGetTime();
-        float dt = (float)(now - last_time) * animation_speed;
-        if (dt <= 0.0f) dt = 1.0f / 60.0f; // delta time
-        last_time = now;
+        // this while loop runs 1 frame of game
 
-        int display_w, display_h;
+        // right panel side width 450px
+        constexpr float right_panel_width = 450.0f;
+
+        double now = glfwGetTime();
+        float dt = (float)(now - last_time) * animation_speed; // delta time
+        if (dt <= 0.0f) dt = 1.0f / 60.0f; // if for some reason negative delta, set to default 60hz time diff
+
+        last_time = now; // update the last updated time to now
+
+        int display_w, display_h; // display width / height
+
         glfwGetFramebufferSize(window, &display_w, &display_h);
         glfwPollEvents();
 
-        // Random emergencies during game
+        // generate random emergencies per frame
         GenerateRandomEmergency(aircraft, dt, random_emergency_timer, random_emergency_interval);
 
-        // Update every aircraft
+        // Spawn new aircraft periodically
+        spawn_timer += dt;
+        if (spawn_timer >= next_spawn_interval && (int)aircraft.size() < max_aircraft)
+        {
+            spawn_timer = 0.0f;
+            next_spawn_interval = spawn_interval_min + ((float)rand() / RAND_MAX) * (spawn_interval_max - spawn_interval_min);
+
+            Aircraft new_ac;
+            generateAircraft(aircraft, new_ac, radar_range_km, (int)aircraft.size(), cur_codes);
+
+            // Spawn on the edge of radar range
+            float edge_angle = ((float)rand() / RAND_MAX) * 2.0f * IM_PI;
+            float spawn_r = radar_range_km * 0.85f; // spawn at 85% of radar radius
+            new_ac.x = cosf(edge_angle) * spawn_r;
+            new_ac.y = sinf(edge_angle) * spawn_r;
+
+            // Heading roughly toward center so plane enters radar area
+            float toward_center = atan2f(-new_ac.y, -new_ac.x);
+            float heading_offset = (((float)rand() / RAND_MAX) - 0.5f) * 60.0f; // +/- 30 deg variation
+            float heading_math = toward_center + deg_to_rad(heading_offset);
+            new_ac.heading_deg = fmodf(rad_to_deg(heading_math) + 360.0f, 360.0f);
+            new_ac.target_heading_deg = new_ac.heading_deg;
+            new_ac.pending_heading_deg = new_ac.heading_deg;
+
+            aircraft.push_back(new_ac);
+        }
+
+        // update every aircraft information
         for (size_t i = 0; i < aircraft.size(); ++i)
         {
-            auto& a = aircraft[i];
+            // to fix
+            // check if crashed -> response timer -> emergency timer -> command_delay ->
+            Aircraft& a = aircraft[i];
 
-            const float max_alt_rate = 40.0f; // ft/s (~2000 fpm)
-            const float alt_accel = 4.0f; // ft/s²
-            const float max_speed_rate = 3.0f;
-            const float speed_accel = 0.5f;
+            if (a.is_on_ground) {
+                a.landing_timer -= dt;
+
+                if (a.landing_timer <= 0.0f) {
+                    int erased_idx = (int)i;
+                    aircraft.erase(aircraft.begin() + erased_idx);
+                    i--;
+                }
+                continue;
+            }
 
             // If plane is crashed
             if (a.is_crashed)
@@ -126,18 +269,27 @@ int main(int, char**)
                 a.crash_timer -= dt;
                 if (a.crash_timer <= 0.0f)
                 {
-                    // Delete plane from existance
-                    aircraft.erase(aircraft.begin() + i);
+
+                    int erased_idx = (int)i;
+                    aircraft.erase(aircraft.begin() + erased_idx);
                     i--;
 
-                    if (selected_index == (int)i)
+                    // Shift ILS map keys: drop the erased entry, decrement all higher keys
                     {
-                        selected_index = -1;
+                        map<int, ILSInfo> shifted;
+                        for (map<int, ILSInfo>::iterator it = aircraft_ils_info.begin();
+                            it != aircraft_ils_info.end(); ++it)
+                        {
+                            if (it->first == erased_idx) continue;       // drop erased aircraft
+                            int new_key = (it->first > erased_idx) ? it->first - 1 : it->first;
+                            shifted[new_key] = it->second;
+                        }
+                        aircraft_ils_info = shifted;
                     }
-                    else if (selected_index > (int)i)
-                    {
-                        selected_index--;
-                    }
+
+                    // Update selected index
+                    if (selected_index == erased_idx)      selected_index = -1;
+                    else if (selected_index > erased_idx)  selected_index--;
                 }
                 continue; // Do not iterate over crashed aircraft
             }
@@ -155,7 +307,11 @@ int main(int, char**)
                     a.crash_timer = 5.0f; // Crash time
                     a.crash_x = a.x;
                     a.crash_y = a.y;
-                    total_crash_count++;
+                    if (!aircraft_ils_info[i].has_landed)
+                        total_crash_count++;
+
+                    // Clean up ILS info
+                    aircraft_ils_info.erase(i);
                     continue; // Do not update aircraft
                 }
             }
@@ -177,8 +333,42 @@ int main(int, char**)
                 }
             }
 
+            // ILS Approach handling
+            if (a.ils_active && !a.is_crashed) {
+                // Create ILS info entry on first frame only
+                if (!aircraft_ils_info.count(i)) {
+                    aircraft_ils_info[i] = ILSInfo();
+                    aircraft_ils_info[i].is_intercepting = true;
+                }
+
+                // Find the matching runway and run the ILS update
+                for (const Runway& rwy : runways) {
+                    if (rwy.name == a.ils_runway) {
+                        updateILSApproach(a, rwy, aircraft_ils_info[i], dt);
+
+                        // Crash triggered inside updateILSApproach (out-of-airspace / overshot)
+                        if (a.is_crashed && !aircraft_ils_info[i].has_landed) {
+                            total_crash_count++;
+                            aircraft_ils_info.erase(i);
+                        }
+
+                        // Landing deactivated ILS inside updateILSApproach
+                        if (!a.ils_active) {
+                            aircraft_ils_info.erase(i);
+                        }
+
+                        break;
+                    }
+                }
+            }
+            else if (!a.ils_active) {
+                // Only clear ILS info when ILS is explicitly disabled
+                aircraft_ils_info.erase(i);
+            }
+
             // check altitude diff
             float alt_error = a.target_altitude_ft - a.altitude_ft;
+
             if (fabs(alt_error) < 0.5f) // close enough to set
             {
                 a.altitude_ft = a.target_altitude_ft;
@@ -186,17 +376,19 @@ int main(int, char**)
             }
             else
             {
+                constexpr float max_alt_rate = 40.0f;
+                constexpr float alt_accel = 4.0f;
                 // Desired vertical speed using braking distance logic
                 float stopping_speed = sqrtf(2.0f * alt_accel * fabs(alt_error));
                 float desired_rate =
-                    std::clamp(stopping_speed, 0.0f, max_alt_rate) *
+                    clamp(stopping_speed, 0.0f, max_alt_rate) *
                     (alt_error > 0.0f ? 1.0f : -1.0f);
 
                 // Accelerate vertical speed toward desired rate
                 float rate_error = desired_rate - a.altitude_rate_fps;
                 float max_delta = alt_accel * dt;
 
-                a.altitude_rate_fps += std::clamp(rate_error, -max_delta, max_delta);
+                a.altitude_rate_fps += clamp(rate_error, -max_delta, max_delta);
                 float new_altitude = a.altitude_ft + a.altitude_rate_fps * dt;
 
                 // Prevent overshoot if target moved this frame
@@ -219,11 +411,11 @@ int main(int, char**)
                 float turn_rate = 5.0f * dt;
                 if (heading_diff > 0)
                 {
-                    a.heading_deg += std::min(turn_rate, heading_diff);
+                    a.heading_deg += min(turn_rate, heading_diff);
                 }
                 else
                 {
-                    a.heading_deg += std::max(-turn_rate, heading_diff);
+                    a.heading_deg += max(-turn_rate, heading_diff);
                 }
 
                 a.heading_deg = fmodf(a.heading_deg + 360.0f, 360.0f);
@@ -237,16 +429,18 @@ int main(int, char**)
             float speed_diff = a.target_speed_kts - a.speed_kts;
             if (fabs(speed_diff) > 0.5f)
             {
+                constexpr float speed_accel = 0.5f;
+                constexpr float max_speed_rate = 3.0f;
                 float desired_rate = 0.0f;
                 float distance_factor = sqrtf(2.0f * speed_accel * fabs(speed_diff));
 
                 if (speed_diff > 0)
                 {
-                    desired_rate = std::min(max_speed_rate, distance_factor);
+                    desired_rate = min(max_speed_rate, distance_factor);
                 }
                 else
                 {
-                    desired_rate = -std::min(max_speed_rate, distance_factor);
+                    desired_rate = -min(max_speed_rate, distance_factor);
                 }
 
                 float rate_diff = desired_rate - a.speed_rate_kps;
@@ -255,11 +449,11 @@ int main(int, char**)
                     float accel_step = speed_accel * dt;
                     if (rate_diff > 0)
                     {
-                        a.speed_rate_kps += std::min(accel_step, rate_diff);
+                        a.speed_rate_kps += min(accel_step, rate_diff);
                     }
                     else
                     {
-                        a.speed_rate_kps += std::max(-accel_step, rate_diff);
+                        a.speed_rate_kps += max(-accel_step, rate_diff);
                     }
                 }
                 else
@@ -287,35 +481,63 @@ int main(int, char**)
             }
 
             // Position update
-            float speed_kmh = a.speed_kts * 1.852f;
-            float speed_kms = speed_kmh / 3600.0f;
-            float ang = deg_to_rad(a.heading_deg);
+            float speed_kmh = a.speed_kts * 1.852f; // kts -> kmh
+            float speed_kms = speed_kmh / 3600.0f; // km per second
+            float ang = deg_to_rad(a.heading_deg); // plane heading
             a.x += cosf(ang) * speed_kms * dt;
             a.y += sinf(ang) * speed_kms * dt;
+
+            // Remove aircraft that have flown outside radar range
+            float dist_from_center = sqrtf(a.x * a.x + a.y * a.y);
+            if (dist_from_center > radar_range_km)
+            {
+                int erased_idx = (int)i;
+
+                // Shift ILS map keys
+                {
+                    map<int, ILSInfo> shifted;
+                    for (map<int, ILSInfo>::iterator it = aircraft_ils_info.begin();
+                        it != aircraft_ils_info.end(); ++it)
+                    {
+                        if (it->first == erased_idx) continue;
+                        int new_key = (it->first > erased_idx) ? it->first - 1 : it->first;
+                        shifted[new_key] = it->second;
+                    }
+                    aircraft_ils_info = shifted;
+                }
+
+                if (selected_index == erased_idx)     selected_index = -1;
+                else if (selected_index > erased_idx) selected_index--;
+
+                aircraft.erase(aircraft.begin() + erased_idx);
+                i--;
+                continue;
+            }
         }
 
-        // Conflict detection
-        const float conflict_horiz_km = 5.0f;
-        const float conflict_horiz_km2 = conflict_horiz_km * conflict_horiz_km;
-        const float conflict_vert_ft = 1000.0f;
+        // Conflict detection data
+        constexpr float conflict_horiz_km = 5.0f;
+        constexpr float conflict_horiz_km2 = conflict_horiz_km * conflict_horiz_km; // why is this squared huuuuh, to check
+        constexpr float conflict_vert_ft = 1000.0f;
 
-        std::vector<std::pair<int, int>> conflicts;
+        // Calculate whether there are conflicts between planes (bubble sort ahh algorithm)
+        vector<pair<int, int>> conflicts;
         for (size_t i = 0; i < aircraft.size(); ++i)
         {
             for (size_t j = i + 1; j < aircraft.size(); ++j)
             {
                 if (aircraft[i].is_crashed || aircraft[j].is_crashed)
                 {
-                    continue; // Crashed planes do not cause conflicts
+                    continue; // crashed planes do not cause conflicts
                 }
 
-                float dx = aircraft[i].x - aircraft[j].x;
-                float dy = aircraft[i].y - aircraft[j].y;
-                float d2 = dx * dx + dy * dy;
-                float dz = abs(aircraft[i].altitude_ft - aircraft[j].altitude_ft);
-                if (d2 <= conflict_horiz_km2 && dz <= conflict_vert_ft)
+                float dx = aircraft[i].x - aircraft[j].x; // distance x
+                float dy = aircraft[i].y - aircraft[j].y; // distance y
+                float d2 = dx * dx + dy * dy; // a^2 + b^2 = c^2
+                float dz = abs(aircraft[i].altitude_ft - aircraft[j].altitude_ft); // vertical distance
+                if (d2 <= conflict_horiz_km2 && dz <= conflict_vert_ft) // check if distanceXY is lesser than 25km && distanceZ <= 1k ft
                 {
-                    conflicts.emplace_back((int)i, (int)j);
+                    conflicts.emplace_back((int)i, (int)j); // push_back aircraft indexes
                 }
             }
         }
@@ -337,10 +559,10 @@ int main(int, char**)
         ImGui::Begin("Radar", nullptr, window_flags);
 
         ImDrawList* draw_list = ImGui::GetWindowDrawList();
-        ImVec2 win_pos = ImGui::GetWindowPos();
-        ImVec2 win_size = ImGui::GetWindowSize();
-        ImVec2 center(win_pos.x + win_size.x * 0.5f, win_pos.y + win_size.y * 0.5f);
-        float radius_max = (win_size.x < win_size.y ? win_size.x : win_size.y) * 0.45f;
+        ImVec2 win_pos = ImGui::GetWindowPos(); // x, y
+        ImVec2 win_size = ImGui::GetWindowSize(); // x, y
+        ImVec2 center(win_pos.x + win_size.x * 0.5f, win_pos.y + win_size.y * 0.5f); // center board
+        float radius_max = (win_size.x < win_size.y ? win_size.x : win_size.y) * 0.45f; // ?
 
         ImVec2 mouse_pos = ImGui::GetMousePos();
         bool is_radar_hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows);
@@ -352,7 +574,7 @@ int main(int, char**)
             {
                 float zoom_factor = 1.0f - wheel * 0.15f;
                 float new_zoom = zoom_level * zoom_factor;
-                new_zoom = std::max(0.2f, std::min(5.0f, new_zoom));
+                new_zoom = max(0.2f, min(5.0f, new_zoom));
 
                 ImVec2 mouse_rel(mouse_pos.x - center.x, mouse_pos.y - center.y);
                 float scale_before = radius_max / (radar_range_km * zoom_level);
@@ -370,9 +592,9 @@ int main(int, char**)
             (ImGui::IsMouseDown(0) && shift_held) ||
             ImGui::IsMouseDown(2) ||
             ImGui::IsMouseDown(1)
-        );
+            );
 
-        // Check if should be panned
+        // Check if map should be panned
         if (should_pan)
         {
             if (!is_panning)
@@ -399,12 +621,12 @@ int main(int, char**)
         draw_list->AddRectFilled(win_pos, ImVec2(win_pos.x + win_size.x, win_pos.y + win_size.y), bg, 8.0f);
 
         auto world_to_screen = [&](float wx, float wy)
-        {
-            float scale = radius_max / (radar_range_km * zoom_level);
-            float vx = wx - camera_x;
-            float vy = wy - camera_y;
-            return ImVec2(center.x + vx * scale, center.y - vy * scale);
-        };
+            {
+                float scale = radius_max / (radar_range_km * zoom_level);
+                float vx = wx - camera_x;
+                float vy = wy - camera_y;
+                return ImVec2(center.x + vx * scale, center.y - vy * scale);
+            };
 
         // Draw rings
         DrawRadarRings(draw_list, radar_range_km, world_to_screen, col_green);
@@ -412,11 +634,92 @@ int main(int, char**)
         // Draw runways and ILS
         DrawRunwaysAndILS(draw_list, runways, world_to_screen);
 
+        // Draw ILS localizer feathers for each runway
+        {
+            const float LOCALIZER_LENGTH_KM = 25.0f;   // how far the centerline extends
+            const float LOCALIZER_HALF_WIDTH_DEG = 2.5f; // half-angle of the funnel
+            const int   DASH_COUNT = 12;                 // dashes on the centerline
+
+            for (const Runway& rwy : runways)
+            {
+                // Inbound course: heading aircraft flies to land (math convention)
+                float inbound_deg = fmodf(rwy.heading_deg + 180.0f + 360.0f, 360.0f);
+                float inbound_rad = deg_to_rad(inbound_deg);
+
+                // Unit vector pointing AWAY from runway along the inbound course
+                // (aircraft come from this direction, so we draw the funnel here)
+                float ix = cosf(inbound_rad);
+                float iy = sinf(inbound_rad);
+
+                // -- Threshold diamond --
+                ImVec2 sc = world_to_screen(rwy.x, rwy.y);
+                float diamond_size = 6.0f;
+                ImVec2 d_top(sc.x, sc.y - diamond_size);
+                ImVec2 d_right(sc.x + diamond_size, sc.y);
+                ImVec2 d_bot(sc.x, sc.y + diamond_size);
+                ImVec2 d_left(sc.x - diamond_size, sc.y);
+                ImU32 col_ils = IM_COL32(100, 200, 255, 220);
+                draw_list->AddQuad(d_top, d_right, d_bot, d_left, col_ils, 1.5f);
+
+                // -- Runway label --
+                float label_x = rwy.x + ix * 1.5f;
+                float label_y = rwy.y + iy * 1.5f;
+                ImVec2 label_pos = world_to_screen(label_x, label_y);
+                char rwy_label[16];
+                snprintf(rwy_label, sizeof(rwy_label), "ILS %s", rwy.name.c_str());
+                draw_list->AddText(ImVec2(label_pos.x + 6.0f, label_pos.y - 8.0f),
+                    IM_COL32(100, 200, 255, 200), rwy_label);
+
+                // -- Dashed centerline extending outward --
+                float dash_step = LOCALIZER_LENGTH_KM / (float)(DASH_COUNT * 2 - 1);
+                for (int d = 0; d < DASH_COUNT; ++d)
+                {
+                    float t0 = (float)(d * 2) * dash_step;
+                    float t1 = (float)(d * 2 + 1) * dash_step;
+                    float wx0 = rwy.x + ix * t0;
+                    float wy0 = rwy.y + iy * t0;
+                    float wx1 = rwy.x + ix * t1;
+                    float wy1 = rwy.y + iy * t1;
+                    draw_list->AddLine(world_to_screen(wx0, wy0),
+                        world_to_screen(wx1, wy1),
+                        IM_COL32(100, 200, 255, 120), 1.0f);
+                }
+
+                // -- Funnel side lines (30-degree capture zone shown as two lines) --
+                float left_deg = inbound_deg + 30.0f;
+                float right_deg = inbound_deg - 30.0f;
+                float left_rad = deg_to_rad(left_deg);
+                float right_rad = deg_to_rad(right_deg);
+
+                // Funnel narrows: full width at far end, zero at threshold
+                // We draw a solid line from threshold to tip of funnel
+                float funnel_km = 15.0f;
+                float lx_end = rwy.x + cosf(left_rad) * funnel_km;
+                float ly_end = rwy.y + sinf(left_rad) * funnel_km;
+                float rx_end = rwy.x + cosf(right_rad) * funnel_km;
+                float ry_end = rwy.y + sinf(right_rad) * funnel_km;
+
+                ImU32 col_funnel = IM_COL32(100, 200, 255, 60);
+                draw_list->AddLine(sc, world_to_screen(lx_end, ly_end), col_funnel, 1.0f);
+                draw_list->AddLine(sc, world_to_screen(rx_end, ry_end), col_funnel, 1.0f);
+
+                // Faint filled triangle for the capture zone
+                draw_list->AddTriangleFilled(
+                    sc,
+                    world_to_screen(lx_end, ly_end),
+                    world_to_screen(rx_end, ry_end),
+                    IM_COL32(100, 200, 255, 12));
+            }
+        }
+
         // Draw waypoints
         DrawWaypoints(draw_list, waypoints, world_to_screen);
 
+
+        float old_animation_speed = -1;
+
         // Radar sweep
-        DrawRadarSweep(draw_list, radar_range_km, animation_speed, world_to_screen);
+        DrawRadarSweep(draw_list, radar_range_km, animation_speed, world_to_screen, old_animation_speed);
 
         // Draw axes
         DrawRadarAxes(draw_list, radar_range_km, world_to_screen, col_green);
@@ -425,7 +728,7 @@ int main(int, char**)
         DrawCrashEffects(draw_list, aircraft, world_to_screen);
 
         // Draw aircraft
-        DrawAircraft(draw_list, aircraft, conflicts, world_to_screen, selected_index, win_pos, win_size);
+        DrawAircraft(draw_list, aircraft, conflicts, world_to_screen, selected_index, win_pos, win_size, zoom_level);
 
         // Draw conflict lines
         DrawConflictLines(draw_list, aircraft, conflicts, world_to_screen);
@@ -487,12 +790,13 @@ int main(int, char**)
         if (ImGui::Button("Spawn Random Aircraft", ImVec2(-1, 0)))
         {
             Aircraft a;
-            generateAircraft(aircraft, a, radar_range_km, aircraft.size());
+            generateAircraft(aircraft, a, radar_range_km, aircraft.size(), cur_codes);
             aircraft.push_back(a);
         }
 
         ImGui::Text("Aircraft: %zu", aircraft.size());
         ImGui::Text("Conflicts: %zu", conflicts.size());
+        ImGui::Text("Planes Landed: %d", planes_landed_count);
 
         // Count crashes
         ImGui::Text("Crashes: %d", total_crash_count);
@@ -502,7 +806,7 @@ int main(int, char**)
         ImGui::SliderFloat("##speed", &animation_speed, 0.1f, 5.0f, "%.1fx");
 
         ImGui::Dummy(ImVec2(0, 5));
-        ImGui::Text("Wind: %03.0f° at %.0f kts", wind_heading, wind_speed_kts);
+        ImGui::Text("Wind: %03.0f° at %.0f kts", wind.first, wind.second);
 
         ImGui::Dummy(ImVec2(0, 10));
         ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "CAMERA CONTROLS");
@@ -563,28 +867,66 @@ int main(int, char**)
                 if (sel.command_delay > 0.0f)
                 {
                     ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.3f, 1.0f),
-                                       "(executing in %.1fs...)", sel.command_delay);
+                        "(executing in %.1fs...)", sel.command_delay);
                 }
             }
 
             ImGui::Dummy(ImVec2(0, 10));
             ImGui::Separator();
 
-            // ILS Selection
+            // ILS Selection and Status
             ImGui::Text("ILS Approach:");
             if (sel.ils_active)
             {
                 ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f),
-                                   "Active: RWY %s", sel.ils_runway.c_str());
+                    "Active: RWY %s", sel.ils_runway.c_str());
+
+                // Display ILS status if available
+                if (aircraft_ils_info.count(selected_index)) {
+                    ILSInfo& info = aircraft_ils_info[selected_index];
+                    ImGui::TextColored(ImVec4(0.3f, 1.0f, 0.3f, 1.0f), "%s",
+                        getILSStatusMessage(info).c_str());
+
+                    // Show deviation indicators
+                    if (info.established_localizer) {
+                        float deviation = info.localizer_deviation;
+                        ImGui::Text("Localizer: ");
+                        ImGui::SameLine();
+                        if (fabs(deviation) < 0.5f) {
+                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "—Ź CENTERED");
+                        }
+                        else if (deviation < 0) {
+                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "—€ LEFT %.1f°", -deviation);
+                        }
+                        else {
+                            ImGui::TextColored(ImVec4(1, 1, 0, 1), "RIGHT %.1f° –¶", deviation);
+                        }
+                    }
+
+                    if (info.established_glideslope) {
+                        float gs_dev = info.glideslope_deviation;
+                        ImGui::Text("Glideslope: ");
+                        ImGui::SameLine();
+                        if (fabs(gs_dev) < 100) {
+                            ImGui::TextColored(ImVec4(0, 1, 0, 1), "—Ź ON PATH");
+                        }
+                        else if (gs_dev > 0) {
+                            ImGui::TextColored(ImVec4(1, 0.5f, 0, 1), "†‘ HIGH %.0f ft", gs_dev);
+                        }
+                        else {
+                            ImGui::TextColored(ImVec4(1, 0, 0, 1), "†“ LOW %.0f ft", -gs_dev);
+                        }
+                    }
+                }
 
                 // Calculate glideslope deviation
-                for (const auto& rwy : runways)
+                for (const Runway& rwy : runways)
                 {
                     if (rwy.name == sel.ils_runway)
                     {
                         float dist_to_rwy = sqrtf((sel.x - rwy.x) * (sel.x - rwy.x) +
                             (sel.y - rwy.y) * (sel.y - rwy.y));
-                        float expected_alt_ft = dist_to_rwy * 1000.0f * tanf(deg_to_rad(3.0f)) * 3.28084f;
+                        float expected_alt_ft = dist_to_rwy * 1000.0f * tanf(deg_to_rad(3.0f)) * 3.28084f + 100.0f;
                         float deviation = sel.altitude_ft - expected_alt_ft;
 
                         if (deviation > 200.0f)
@@ -607,21 +949,45 @@ int main(int, char**)
                 {
                     sel.ils_active = false;
                     sel.ils_runway = "";
+                    aircraft_ils_info.erase(selected_index);
                     sel.setCommand("ILS approach canceled");
                 }
             }
-            else
-            {
-                for (const auto& rwy : runways)
+            else {
+                for (const Runway& rwy : runways)
                 {
-                    std::string btn_label = "ILS RWY " + rwy.name;
-                    if (ImGui::Button(btn_label.c_str(), ImVec2(-1, 0)))
-                    {
-                        sel.ils_active = true;
-                        sel.ils_runway = rwy.name;
-                        std::ostringstream r;
-                        r << "Roger, cleared ILS approach runway " << rwy.name;
-                        sel.setCommand(r.str());
+                    string btn_label = "ILS RWY " + rwy.name;
+
+                    // Check if intercept is possible
+                    bool can_intercept = canInterceptLocalizer(sel, rwy);
+
+                    if (can_intercept) {
+                        if (ImGui::Button(btn_label.c_str(), ImVec2(-1, 0)))
+                        {
+                            sel.ils_active = true;
+                            sel.ils_runway = rwy.name;
+                            sel.has_pending_command = false;
+                            sel.command_delay = 0.0f;
+                            ostringstream r;
+                            r << "Cleared ILS approach runway " << rwy.name << ", intercept angle "
+                                << (int)getInterceptAngle(sel, rwy) << " degrees";
+                            // Use immediate response - no pending command delay
+                            // so the ILS heading guidance isn't overwritten when the delay fires
+                            sel.setImmediateResponse(r.str(), 5.0f);
+                        }
+                    }
+                    else {
+                        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.5f, 0.1f, 0.1f, 0.6f));
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.6f, 0.1f, 0.1f, 0.8f));
+                        if (ImGui::Button((btn_label + "##disabled").c_str(), ImVec2(-1, 0))) {
+                            // Calculate the required heading to intercept
+                            float inbound = inbound_course(rwy);
+                            float current_hdg = sel.heading_deg;
+                            float diff = fabsf(angle_difference(inbound, current_hdg));
+                            sel.setImmediateResponse("Unable to clear ILS - intercept angle too steep (" +
+                                std::to_string((int)diff) + "°, max 30°)", 4.0f);
+                        }
+                        ImGui::PopStyleColor(2);
                     }
                 }
             }
@@ -646,7 +1012,7 @@ int main(int, char**)
                 float old_target = sel.target_altitude_ft;
 
                 float requested = old_target - 1000.0f;
-                float new_target = std::max(ALT_MIN, requested);
+                float new_target = max(ALT_MIN, requested);
 
                 float diff = old_target - new_target;
 
@@ -659,7 +1025,7 @@ int main(int, char**)
                     sel.pending_altitude_ft = new_target;
                     sel.has_pending_command = true;
 
-                    std::ostringstream r;
+                    ostringstream r;
                     if (requested < ALT_MIN)
                     {
                         r << "Descending " << (int)diff << " ft to minimum altitude of 1600 ft";
@@ -679,7 +1045,7 @@ int main(int, char**)
                 float old_target = sel.target_altitude_ft;
 
                 float requested = old_target - 100.0f;
-                float new_target = std::max(ALT_MIN, requested);
+                float new_target = max(ALT_MIN, requested);
 
                 float diff = old_target - new_target;
 
@@ -692,7 +1058,7 @@ int main(int, char**)
                     sel.pending_altitude_ft = new_target;
                     sel.has_pending_command = true;
 
-                    std::ostringstream r;
+                    ostringstream r;
                     if (requested < ALT_MIN)
                     {
                         r << "Descending " << (int)diff << " ft to minimum altitude of 1600 ft";
@@ -712,7 +1078,7 @@ int main(int, char**)
                 float old_target = sel.target_altitude_ft;
 
                 float requested = old_target + 100.0f;
-                float new_target = std::min(ALT_MAX, requested);
+                float new_target = min(ALT_MAX, requested);
 
                 float diff = new_target - old_target;
 
@@ -725,7 +1091,7 @@ int main(int, char**)
                     sel.pending_altitude_ft = new_target;
                     sel.has_pending_command = true;
 
-                    std::ostringstream r;
+                    ostringstream r;
                     if (requested > ALT_MAX)
                     {
                         r << "Climbing " << (int)diff << " ft to maximum altitude of 23000 ft";
@@ -745,7 +1111,7 @@ int main(int, char**)
                 float old_target = sel.target_altitude_ft;
 
                 float requested = old_target + 1000.0f;
-                float new_target = std::min(ALT_MAX, requested);
+                float new_target = min(ALT_MAX, requested);
 
                 float diff = new_target - old_target;
 
@@ -758,7 +1124,7 @@ int main(int, char**)
                     sel.pending_altitude_ft = new_target;
                     sel.has_pending_command = true;
 
-                    std::ostringstream r;
+                    ostringstream r;
                     if (requested > ALT_MAX)
                     {
                         r << "Climbing " << (int)diff << " ft to maximum altitude of 23000 ft";
@@ -772,16 +1138,13 @@ int main(int, char**)
                 }
             }
 
-            ImGui::Separator();
-            // === HEADING ===
             ImGui::Text("Heading: %.0f°", fmodf(450.0f - sel.heading_deg, 360.0f));
 
-            // Display target heading if different
-            if (fabs(angle_difference(sel.target_heading_deg, sel.heading_deg)) > 1.0f)
+            if (fabs(angle_difference(sel.target_heading_deg, sel.heading_deg)) > 0.5f)
             {
                 ImGui::SameLine();
                 ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f),
-                                   "-> %.0f°", fmodf(450.0f - sel.target_heading_deg, 360.0f));
+                    "-> %.0f°", fmodf(450.0f - sel.target_heading_deg, 360.0f));
             }
 
             // Heading buttons
@@ -793,7 +1156,7 @@ int main(int, char**)
                 float diff = angle_difference(sel.pending_heading_deg, old_target);
                 if (diff < 0) diff = -diff;
 
-                std::ostringstream r;
+                ostringstream r;
                 r << "Roger, turning left " << (int)diff << " degrees";
                 sel.setCommand(r.str(), 3.5f); // stays for 3.5s
             }
@@ -806,7 +1169,7 @@ int main(int, char**)
                 float diff = angle_difference(sel.pending_heading_deg, old_target);
                 if (diff < 0) diff = -diff;
 
-                std::ostringstream r;
+                ostringstream r;
                 r << "Roger, turning right " << (int)diff << " degrees";
                 sel.setCommand(r.str(), 3.5f);
             }
@@ -819,7 +1182,7 @@ int main(int, char**)
             {
                 ImGui::SameLine();
                 ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f),
-                                   "-> %.0f kts", sel.target_speed_kts);
+                    "-> %.0f kts", sel.target_speed_kts);
             }
 
             // Speed buttons
@@ -828,7 +1191,7 @@ int main(int, char**)
                 float old_target = sel.target_speed_kts;
 
                 float requested = old_target - 5.0f;
-                float new_target = std::max(SPD_MIN, requested);
+                float new_target = max(SPD_MIN, requested);
 
                 float diff = old_target - new_target;
 
@@ -842,7 +1205,7 @@ int main(int, char**)
                     sel.has_pending_command = true;
                     sel.command_delay = 5.0f;
 
-                    std::ostringstream r;
+                    ostringstream r;
                     if (requested < SPD_MIN)
                     {
                         r << "Reducing speed " << (int)diff << " knots to minimum 80 knots";
@@ -861,7 +1224,7 @@ int main(int, char**)
                 float old_target = sel.target_speed_kts;
 
                 float requested = old_target + 5.0f;
-                float new_target = std::min(SPD_MAX, requested);
+                float new_target = min(SPD_MAX, requested);
 
                 float diff = new_target - old_target;
 
@@ -875,7 +1238,7 @@ int main(int, char**)
                     sel.has_pending_command = true;
                     sel.command_delay = 5.0f;
 
-                    std::ostringstream r;
+                    ostringstream r;
                     if (requested > SPD_MAX)
                     {
                         r << "Increasing speed " << (int)diff << " knots to maximum 300 knots";
@@ -890,9 +1253,9 @@ int main(int, char**)
 
             // TEXT COMMAND INPUT
             static char command_buf[128] = "";
-            static std::string command_feedback = "";
-            static std::vector<std::string> history;
-            static int history_index = -1;
+            static string command_feedback;
+            static vector<string> history;
+            static int history_index = -1; // what is this needed for???
             static float command_feedback_timer = 0.0f;
 
             ImGui::Separator();
@@ -902,7 +1265,7 @@ int main(int, char**)
 
             if (ImGui::InputText("##cmd", command_buf, IM_ARRAYSIZE(command_buf), flags))
             {
-                std::string cmd = command_buf;
+                string cmd = command_buf;
                 command_buf[0] = '\0';
                 command_feedback = "";
                 command_feedback_timer = 5.0f;
@@ -910,22 +1273,22 @@ int main(int, char**)
                 history.push_back(cmd);
                 history_index = -1;
 
-                std::string u;
+                string u;
                 for (char c : cmd) u += (char)toupper(c);
 
-                auto extract_number = [&](const std::string& s) -> float
-                {
-                    for (int i = 0; i < (int)s.size(); i++)
-                        if ((s[i] >= '0' && s[i] <= '9'))
-                        {
-                            return atof(s.c_str() + i);
-                        }
-                    return 0.0f;
-                };
+                auto extract_number = [&](const string& s) -> float
+                    {
+                        for (int i = 0; i < (int)s.size(); i++)
+                            if ((s[i] >= '0' && s[i] <= '9'))
+                            {
+                                return atof(s.c_str() + i);
+                            }
+                        return 0.0f;
+                    };
 
                 // REMOVE AIRCRAFT command
-                if (u.find("REMOVE") != std::string::npos &&
-                    u.find("AIRCRAFT") != std::string::npos)
+                if (u.find("REMOVE") != string::npos &&
+                    u.find("AIRCRAFT") != string::npos)
                 {
                     aircraft.erase(aircraft.begin() + selected_index);
                     selected_index = -1;
@@ -936,7 +1299,7 @@ int main(int, char**)
                 {
                     float fl = extract_number(u);
                     float alt = fl * 100.0f;
-                    alt = std::clamp(alt, ALT_MIN, ALT_MAX);
+                    alt = clamp(alt, ALT_MIN, ALT_MAX);
 
                     float old_pending = sel.pending_altitude_ft;
                     float diff = alt - old_pending;
@@ -945,7 +1308,7 @@ int main(int, char**)
                     sel.has_pending_command = true;
                     sel.command_delay = 5.0f; // same delay as buttons
 
-                    std::ostringstream response;
+                    ostringstream response;
                     if (diff > 0)
                     {
                         response << "Climbing " << (int)diff << " ft to flight level " << (int)fl;
@@ -961,7 +1324,7 @@ int main(int, char**)
                     u.rfind("CLIMB ", 0) == 0 || u.rfind("DESCEND ", 0) == 0)
                 {
                     float alt = extract_number(u);
-                    alt = std::clamp(alt, ALT_MIN, ALT_MAX);
+                    alt = clamp(alt, ALT_MIN, ALT_MAX);
 
                     float old_pending = sel.pending_altitude_ft;
                     float diff = alt - old_pending;
@@ -970,7 +1333,7 @@ int main(int, char**)
                     sel.has_pending_command = true;
                     sel.command_delay = 5.0f;
 
-                    std::ostringstream response;
+                    ostringstream response;
                     if (diff > 0)
                     {
                         response << "Climbing " << (int)diff << " ft to " << (int)alt << " ft";
@@ -993,9 +1356,9 @@ int main(int, char**)
                     sel.command_delay = 3.5f; // same as heading buttons
 
                     float diff = angle_difference(sel.pending_heading_deg, old_pending);
-                    if (diff < 0) diff = -diff;
+                    if (diff < 0) diff = diff * (-1);
 
-                    std::ostringstream response;
+                    ostringstream response;
                     response << "Turning to heading " << (int)hdg;
                     sel.setCommand(response.str(), 3.5f);
                     command_feedback = "Heading assigned.";
@@ -1012,7 +1375,7 @@ int main(int, char**)
                     float diff = angle_difference(sel.pending_heading_deg, old_pending);
                     if (diff < 0) diff = -diff;
 
-                    std::ostringstream response;
+                    ostringstream response;
                     response << "Turning left " << (int)diff << " degrees";
                     sel.setCommand(response.str(), 3.5f);
                     command_feedback = "Turning left.";
@@ -1029,7 +1392,7 @@ int main(int, char**)
                     float diff = angle_difference(sel.pending_heading_deg, old_pending);
                     if (diff < 0) diff = -diff;
 
-                    std::ostringstream response;
+                    ostringstream response;
                     response << "Turning right " << (int)diff << " degrees";
                     sel.setCommand(response.str(), 3.5f);
                     command_feedback = "Turning right.";
@@ -1041,7 +1404,7 @@ int main(int, char**)
 
                     float old_pending = sel.pending_speed_kts;
                     float requested = spd;
-                    float new_speed = std::clamp(requested, SPD_MIN, SPD_MAX);
+                    float new_speed = clamp(requested, SPD_MIN, SPD_MAX);
 
                     float diff = new_speed - old_pending;
 
@@ -1049,11 +1412,11 @@ int main(int, char**)
                     {
                         if (requested < SPD_MIN)
                         {
-                            command_feedback = "Minimum speed is 80 knots.";
+                            command_feedback = "Minimum speed is " + to_string(SPD_MIN) + " knots.";
                         }
                         else if (requested > SPD_MAX)
                         {
-                            command_feedback = "Maximum speed is 300 knots.";
+                            command_feedback = "Maximum speed is " + to_string(SPD_MAX) + " knots.";
                         }
                         else
                         {
@@ -1066,7 +1429,7 @@ int main(int, char**)
                         sel.has_pending_command = true;
                         sel.command_delay = 3.5f;
 
-                        std::ostringstream response;
+                        ostringstream response;
                         if (diff > 0)
                         {
                             if (requested > SPD_MAX)
@@ -1125,9 +1488,9 @@ int main(int, char**)
         }
 
         ImGui::End();
-
+        // go to
     render_end:
-        // Render
+        // render frame
         ImGui::Render();
         glViewport(0, 0, display_w, display_h);
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
@@ -1136,6 +1499,8 @@ int main(int, char**)
 
         glfwSwapBuffers(window);
     }
+
+    // close ImGui window
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

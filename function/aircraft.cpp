@@ -61,10 +61,15 @@ void Aircraft::setImmediateResponse(const std::string& response, float duration)
 void generateAircraft(std::vector<Aircraft>& aircraft,
                       Aircraft& a,
                       float radar_range_km,
-                      int i)
+                      int i,
+                      std::vector<std::string> cur_codes
+                      )
 {
     std::ostringstream ss;
-    ss << "AC" << std::setw(2) << std::setfill('0') << (i + 1);
+    int num = rand()%9998+1;
+    int size = cur_codes.size();
+    int random_code = rand()%size;
+    ss << cur_codes[random_code] << std::setw(4) << std::setfill('0') << (num);
     a.callsign = ss.str();
 
     const float r = ((float)rand() / RAND_MAX) * radar_range_km;
@@ -77,13 +82,13 @@ void generateAircraft(std::vector<Aircraft>& aircraft,
     if (rand() % 100 < 10)
     {
         a.is_overflight = true;
-        a.altitude_ft = 32000.0f + (rand() % 111) * 100;
+        a.altitude_ft = 31000.0f + (rand() % 121) * 100;
         a.squawk_code = "----";
     }
     else
     {
         a.is_overflight = false;
-        a.altitude_ft = 1600.0f + (rand() % 215) * 100;
+        a.altitude_ft = 6000.0f + (rand() % 70) * 100;
         a.squawk_code = generateSquawkCode();
 
         if (rand() % 100 < 2)
@@ -132,14 +137,14 @@ void generateAircraft(std::vector<Aircraft>& aircraft,
     a.initTargets();
 }
 
-std::vector<Aircraft> generateInitialAircraft(int count, float radar_range_km)
+std::vector<Aircraft> generateInitialAircraft(int count, float radar_range_km, std::vector<std::string> cur_codes)
 {
     std::vector<Aircraft> aircraftList;
 
     for (int i = 0; i < count; ++i)
     {
         Aircraft a;
-        generateAircraft(aircraftList, a, radar_range_km, i);
+        generateAircraft(aircraftList, a, radar_range_km, i, cur_codes);
         aircraftList.push_back(a);
     }
 

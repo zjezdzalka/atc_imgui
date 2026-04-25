@@ -25,6 +25,8 @@ struct Aircraft
     std::string squawk_code = "1200";
     bool selected = false; // user can edit
     bool is_overflight = false; // if true, user cannot manage plane
+    bool is_on_ground = false;
+    float landing_timer = 0.0f;
 
     // ILS approach
     bool ils_active = false;
@@ -70,6 +72,6 @@ struct Aircraft
     void setImmediateResponse(const std::string& response, float duration = 3.0f);
 };
 
-void generateAircraft(std::vector<Aircraft>& aircraft, Aircraft& a, float radar_range_km, int index);
+void generateAircraft(std::vector<Aircraft>& aircraft, Aircraft& a, float radar_range_km, int index, std::vector<std::string> cur_codes);
 
-std::vector<Aircraft> generateInitialAircraft(int count, float radar_range_km);
+std::vector<Aircraft> generateInitialAircraft(int count, float radar_range_km, std::vector<std::string> cur_codes);

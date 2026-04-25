@@ -3,6 +3,9 @@
 //
 
 #include "draw.h"
+
+#include <algorithm>
+
 #include "runway.h"
 #include "aircraft.h"
 #include "utils.h"
@@ -88,7 +91,7 @@ void DrawRunwaysAndILS(ImDrawList* draw_list, const std::vector<Runway>& runways
 
         // Draw ILS localizer - straight line, 30 km long
         float ils_angle = (rwy.heading_deg + 180.0f) * (3.14159265f / 180.0f); // Opposite direction
-        float ils_len = 30.0f; // 30 km ILS
+        float ils_len = 45.0f; // 45 km ILS
 
         // ILS starts at runway threshold
         ImVec2 ils_start = world_to_screen(
@@ -123,9 +126,12 @@ void DrawWaypoints(ImDrawList* draw_list, const std::vector<Waypoint>& waypoints
 void DrawRadarSweep(ImDrawList* draw_list,
                     float radar_range_km,
                     float animation_speed,
-                    std::function<ImVec2(float,float)> world_to_screen)
+                    std::function<ImVec2(float,float)> world_to_screen,
+                    float &old_animation_speed)
 {
+    if (old_animation_speed == -1) old_animation_speed = animation_speed;
     float sweep_angle = fmodf(ImGui::GetTime() * 0.8f * animation_speed, 2.0f * IM_PI);
+    float old_sweep_angle = fmodf(ImGui::GetTime() * 0.8f * animation_speed, 2.0f * IM_PI);
     float sweep_length_km = radar_range_km;
 
     float sx = cosf(sweep_angle) * sweep_length_km;
@@ -196,7 +202,8 @@ void DrawAircraft(ImDrawList* draw_list,
                   std::function<ImVec2(float,float)> world_to_screen,
                   int selected_index,
                   const ImVec2& win_pos,
-                  const ImVec2& win_size)
+                  const ImVec2& win_size,
+                  float zoom_level)
 {
     for (size_t i = 0; i < aircraft.size(); ++i)
     {
@@ -205,47 +212,78 @@ void DrawAircraft(ImDrawList* draw_list,
 
         ImVec2 pos = world_to_screen(a.x, a.y);
 
-        float margin = 100.0f;
-        bool on_screen = (pos.x >= win_pos.x - margin && pos.x <= win_pos.x + win_size.x + margin &&
-                          pos.y >= win_pos.y - margin && pos.y <= win_pos.y + win_size.y + margin);
-        if (!on_screen) continue;
+        float margin = 50.0f;
+        if (pos.x < win_pos.x - margin || pos.x > win_pos.x + win_size.x + margin ||
+            pos.y < win_pos.y - margin || pos.y > win_pos.y + win_size.y + margin)
+            continue;
 
-        // Check conflict
-        bool in_conflict = false;
-        for (auto& cf : conflicts)
+        // Kolory
+        ImU32 plane_color;
+        if (a.emergency != EMERGENCY_NONE) plane_color = IM_COL32(255, 0, 0, 255);
+        else if (a.is_overflight)          plane_color = IM_COL32(100, 100, 100, 255);
+        else if (selected_index == (int)i) plane_color = IM_COL32(255, 255, 0, 255);
+        else                               plane_color = IM_COL32(255, 255, 255, 255);
+
+        float heading_rad = deg_to_rad(a.heading_deg);
+        float cos_h = cosf(heading_rad);
+        float sin_h = sinf(heading_rad);
+
+        // Smooth autoscaling that adapts to zoom level
+        float s = (selected_index == (int)i) ? 1.1f : 0.95f;
+
+        if (zoom_level>1) s *= (1/zoom_level);
+
+        s *= 0.5;
+
+        // Ensure size stays within reasonable bounds using std::clamp
+        s = std::clamp(s, 0.5f, 2.5f);
+
+        auto transform = [&](float lx, float ly) -> ImVec2 {
+            return ImVec2(
+                pos.x + (lx * cos_h - ly * sin_h) * s,
+                pos.y - (lx * sin_h + ly * cos_h) * s
+            );
+        };
+
+        // ✔ W pełni symetryczna, wypukła sylwetka
+        ImVec2 pts[] =
         {
-            if ((int)i == cf.first || (int)i == cf.second)
-            {
-                in_conflict = true;
-                break;
-            }
-        }
+            transform( 18,  0),   // Nose
 
-        // Determine blip color
-        ImU32 blip_col;
-        if (a.emergency != EMERGENCY_NONE)
-            blip_col = IM_COL32(255, 0, 0, 255);
-        else if (a.is_overflight)
-            blip_col = IM_COL32(150, 150, 150, 180);
-        else if (in_conflict)
-            blip_col = IM_COL32(255, 64, 64, 255);
-        else
-            blip_col = IM_COL32(255, 255, 0, 255);
+            transform( 10,  3),   // Fuselage front right
+            transform(  0,  3),   // Wing root right front
+            transform(-10, 14),   // Wing tip right
+            transform(-14, 14),
+            transform(-6,   3),   // Wing root right back
 
-        float blip_radius = (selected_index == (int)i) ? 6.0f : 4.0f;
-        draw_list->AddCircleFilled(pos, blip_radius, blip_col);
+            transform(-18,  3),   // Tail start right
+            transform(-24,  6),   // Horizontal stabilizer right
+            transform(-26,  0),   // Tail back center
 
-        // Heading line
-        float head_rad = deg_to_rad(a.heading_deg);
-        ImVec2 head_end(pos.x + cosf(head_rad) * 12.0f, pos.y - sinf(head_rad) * 12.0f);
-        draw_list->AddLine(pos, head_end, IM_COL32(200, 200, 200, 180), 1.0f);
+            transform(-24, -6),   // Horizontal stabilizer left
+            transform(-18, -3),   // Tail start left
 
-        // Text (callsign, FL, squawk)
-        std::ostringstream ss;
-        ss << a.callsign << "\n" << "FL" << (int)(a.altitude_ft / 100) << "\n" << a.squawk_code;
-        draw_list->AddText(ImVec2(pos.x + 8.0f, pos.y - 10.0f),
-                           a.is_overflight ? IM_COL32(150, 150, 150, 180) : IM_COL32(180, 240, 180, 220),
-                           ss.str().c_str());
+            transform(-6,  -3),   // Wing root left back
+            transform(-14,-14),
+            transform(-10,-14),   // Wing tip left
+            transform(  0,  -3),  // Wing root left front
+            transform( 10,  -3)   // Fuselage front left
+        };
+
+        // Cienki outline dla kontrastu
+        draw_list->AddPolyline(pts,
+                               IM_ARRAYSIZE(pts),
+                               plane_color,
+                               ImDrawFlags_Closed,
+                               1.0f);
+
+        // Label
+        std::string label = a.callsign + "\nFL" +
+                            std::to_string((int)(a.altitude_ft / 100));
+
+        draw_list->AddText(ImVec2(pos.x + 18, pos.y - 15),
+                           IM_COL32_WHITE,
+                           label.c_str());
     }
 }
 

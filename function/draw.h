@@ -29,7 +29,8 @@ void DrawWaypoints(ImDrawList* draw_list, const std::vector<Waypoint>& waypoints
 void DrawRadarSweep(ImDrawList* draw_list,
                     float radar_range_km,
                     float animation_speed,
-                    std::function<ImVec2(float,float)> world_to_screen);
+                    std::function<ImVec2(float,float)> world_to_screen,
+                    float& old_animation_speed);
 
 void DrawRadarAxes(ImDrawList* draw_list, float radar_range_km,
                    std::function<ImVec2(float,float)> world_to_screen, ImU32 col_green);
@@ -44,7 +45,8 @@ void DrawAircraft(ImDrawList* draw_list,
                   std::function<ImVec2(float,float)> world_to_screen,
                   int selected_index,
                   const ImVec2& win_pos,
-                  const ImVec2& win_size);
+                  const ImVec2& win_size,
+                  float zoom_level);
 
 void DrawConflictLines(ImDrawList* draw_list,
                        const std::vector<Aircraft>& aircraft,
